@@ -63,13 +63,13 @@
   .count-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: #111; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .count-val { font-size: 16px; font-weight: 600; color: #111; min-width: 24px; text-align: center; }
   .big-ticket { margin: 16px 20px; border-radius: 20px; padding: 24px; position: relative; overflow: hidden; min-height: 180px; }
-  .bt-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
-  .bt-bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 20px; opacity: 0.45; }
-  .bt-content { position: relative; z-index: 1; }
+  .bt-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 0; }
+  canvas.bt-bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 20px; opacity: 0.45; }
+  .bt-content { position: relative; z-index: 2; }
   .bt-title { font-size: 22px; font-weight: 700; color: white; margin-bottom: 4px; }
   .bt-sub { font-size: 14px; color: rgba(255,255,255,0.85); margin-bottom: 16px; }
   .qr-box { background: white; border-radius: 12px; padding: 10px; display: inline-block; margin-bottom: 12px; }
-  .use-btn { background: rgba(255,255,255,0.25); border: none; border-radius: 12px; padding: 10px 20px; color: white; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .use-btn { background: white; border: none; border-radius: 14px; padding: 14px 0; color: #7F77DD; font-size: 17px; font-weight: 700; cursor: pointer; width: 100%; display: block; margin-top: 8px; }
   .detail-actions { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
   .action-btn { border: 1px solid #ddd; border-radius: 12px; padding: 13px; font-size: 14px; cursor: pointer; text-align: center; background: #fff; color: #111; }
   .action-btn.primary { background: #7F77DD; color: white; border-color: #7F77DD; font-weight: 600; }
@@ -82,6 +82,14 @@
   .copy-btn.copied { background: #1D9E75; }
   .close-share-btn { width: 100%; background: none; border: 1px solid #ddd; border-radius: 12px; padding: 12px; font-size: 14px; cursor: pointer; color: #111; }
   .empty { text-align: center; padding: 48px 20px; color: #aaa; font-size: 14px; }
+  .tear-overlay { display:none; position:absolute; top:0; left:0; right:0; bottom:0; z-index:100; pointer-events:none; overflow:hidden; border-radius:20px; }
+  .tear-overlay.active { display:block; }
+  .tear-top { position:absolute; top:0; left:0; right:0; height:50%; transform-origin:top center; animation:tearTop 0.6s ease-in forwards; }
+  .tear-bottom { position:absolute; bottom:0; left:0; right:0; height:50%; transform-origin:bottom center; animation:tearBottom 0.6s ease-in forwards; }
+  .tear-stamp { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) rotate(-15deg) scale(0); animation:stampIn 0.4s 0.35s cubic-bezier(0.175,0.885,0.32,1.275) forwards; z-index:10; }
+  @keyframes tearTop { 0%{transform:translateY(0) rotate(0)} 100%{transform:translateY(-120%) rotate(-8deg)} }
+  @keyframes tearBottom { 0%{transform:translateY(0) rotate(0)} 100%{transform:translateY(120%) rotate(8deg)} }
+  @keyframes stampIn { 0%{transform:translate(-50%,-50%) rotate(-15deg) scale(0)} 60%{transform:translate(-50%,-50%) rotate(-15deg) scale(1.2)} 100%{transform:translate(-50%,-50%) rotate(-15deg) scale(1)} }
 </style>
 </head>
 <body>
@@ -227,14 +235,19 @@
     </div>
     <div>
       <div class="big-ticket" id="detail-card">
-        <canvas class="bt-bg-canvas" id="detail-bg-canvas"></canvas>
+        <img id="detail-bg-img" style="display:none;position:absolute;top:0;right:0;bottom:0;height:100%;width:auto;z-index:1;opacity:0.5;border-radius:20px;">
         <div class="bt-overlay" id="detail-color-overlay"></div>
         <div class="bt-content">
           <div class="bt-title" id="detail-title"></div>
           <div class="bt-sub" id="detail-desc"></div>
           <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:16px" id="detail-expiry"></div>
           <div class="qr-box"><svg id="qr-svg" width="90" height="90" viewBox="0 0 90 90"></svg></div><br>
-          <button class="use-btn" onclick="useTicket()">タップして使用</button>
+          <button class="use-btn" id="use-btn" onclick="useTicket()">タップして使用</button>
+        </div>
+        <div class="tear-overlay" id="tear-overlay">
+          <div class="tear-top" id="tear-top"></div>
+          <div class="tear-bottom" id="tear-bottom"></div>
+          <div class="tear-stamp"><img src="data:image/jpeg;base64,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" style="width:80px;height:80px;object-fit:contain;border-radius:50%;"></div>
         </div>
       </div>
       <div class="detail-actions">
@@ -945,29 +958,52 @@ function openDetail(i) {
   document.getElementById('detail-color-overlay').style.background =
     `linear-gradient(135deg,${COLOR_GRADS[t.color][0]},${COLOR_GRADS[t.color][1]})`;
   document.getElementById('remain-info').textContent = `残り ${remain} / ${t.total} 枚`;
-  const bgC = document.getElementById('detail-bg-canvas');
-  if (t.imgData) {
-    const img = new Image();
-    img.onload = () => {
-      const bc = bgC.getContext('2d');
-      bgC.width = 340; bgC.height = 180;
-      bc.drawImage(img, 0, 0, 340, 180);
-    };
-    img.src = t.imgData;
-    bgC.style.display = 'block';
-  } else {
-    bgC.style.display = 'none';
+  const bgImg = document.getElementById('detail-bg-img');
+  if (bgImg) {
+    if (t.imgData) {
+      bgImg.onload = () => { bgImg.style.display = 'block'; };
+      bgImg.src = t.imgData;
+      if (bgImg.complete) bgImg.style.display = 'block';
+    } else {
+      bgImg.src = '';
+      bgImg.style.display = 'none';
+    }
   }
   drawQR('qr-svg', 90, t.title + i);
+  // use-btnを毎回リセット
+  const useBtn = document.getElementById('use-btn');
+  if (useBtn) {
+    const expired = getExpiryStatus(t.expiry).expired;
+    const usedUp = (t.total - remain) >= t.total;
+    if (expired || usedUp) {
+      useBtn.disabled = true;
+      useBtn.style.opacity = '0.4';
+      useBtn.style.cursor = 'not-allowed';
+      useBtn.textContent = expired ? '期限切れ' : '使用済み';
+    } else {
+      useBtn.disabled = false;
+      useBtn.style.opacity = '1';
+      useBtn.style.cursor = 'pointer';
+      useBtn.textContent = 'タップして使用';
+    }
+  }
   showScreen('detail-screen');
+}
+
+// 有効期限チェック
+function getExpiryStatus(expiry) {
+  if (!expiry) return { expired: false, daysLeft: null };
+  const today = new Date(); today.setHours(0,0,0,0);
+  const exp = new Date(expiry); exp.setHours(0,0,0,0);
+  const diff = Math.round((exp - today) / (1000 * 60 * 60 * 24));
+  return { expired: diff < 0, daysLeft: diff };
 }
 
 function useTicket() {
   const t = tickets[currentTicket];
-  const status = getExpiryStatus ? getExpiryStatus(t.expiry) : {expired:false};
-  if (status && status.expired) { showAlert('有効期限が切れているため使用できません'); return; }
+  const status = getExpiryStatus(t.expiry);
+  if (status.expired) { showAlert('有効期限が切れているため使用できません'); return; }
   if (t.total - t.used <= 0) { showAlert('このチケットは使用済みです'); return; }
-  // カスタム確認シートを表示
   document.getElementById('confirm-ticket-name').textContent = '「' + t.title + '」を1枚使用します';
   document.getElementById('confirm-wrap').style.display = 'flex';
 }
@@ -975,8 +1011,28 @@ function useTicket() {
 function confirmUse() {
   document.getElementById('confirm-wrap').style.display = 'none';
   const t = tickets[currentTicket];
+  // カラーをtear-top/bottomに設定
+  const grad = `linear-gradient(135deg,${COLOR_GRADS[t.color][0]},${COLOR_GRADS[t.color][1]})`;
+  const tt = document.getElementById('tear-top');
+  const tb = document.getElementById('tear-bottom');
+  if (tt) tt.style.background = grad;
+  if (tb) tb.style.background = grad;
+  // アニメーション開始
+  const overlay = document.getElementById('tear-overlay');
+  if (overlay) {
+    overlay.classList.remove('active');
+    void overlay.offsetWidth;
+    overlay.classList.add('active');
+    setTimeout(() => overlay.classList.remove('active'), 1400);
+  }
+  // データ更新
   t.used++;
   document.getElementById('remain-info').textContent = `残り ${t.total - t.used} / ${t.total} 枚`;
+  // 使用済みなら使用ボタンを無効化
+  if (t.total - t.used <= 0) {
+    const btn = document.getElementById('use-btn');
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.4'; btn.textContent = '使用済み'; }
+  }
   saveTickets();
 }
 
@@ -1126,17 +1182,17 @@ function showScreen(id) {
 // ============================================================
 // ローカルストレージ保存（データ永続化 ※画像データ除く）
 // ============================================================
+function imgKey(t) {
+  return 'ticket_img_' + encodeURIComponent(t.title + '_' + t.color);
+}
+
 function saveTickets() {
   try {
-    // imgDataを除いたチケット情報を保存
     const slim = tickets.map(t => ({ ...t, imgData: null }));
     localStorage.setItem('tickets', JSON.stringify(slim));
-    // imgDataは別キーで個別に保存
-    tickets.forEach((t, i) => {
+    tickets.forEach(t => {
       if (t.imgData) {
-        try { localStorage.setItem('ticket_img_' + i, t.imgData); } catch(e) {}
-      } else {
-        localStorage.removeItem('ticket_img_' + i);
+        try { localStorage.setItem(imgKey(t), t.imgData); } catch(e) {}
       }
     });
   } catch (e) {}
@@ -1226,9 +1282,17 @@ function loadTickets() {
     const saved = localStorage.getItem('tickets');
     if (saved) {
       tickets = JSON.parse(saved);
-      tickets.forEach((t, i) => {
-        const imgData = localStorage.getItem('ticket_img_' + i);
-        if (imgData) t.imgData = imgData;
+      tickets.forEach(t => {
+        // titleベースキーで復元
+        const imgData = localStorage.getItem(imgKey(t));
+        if (imgData) {
+          t.imgData = imgData;
+        } else {
+          // localStorage未保存の場合はSAMPLE_IMGSから復元
+          if (t.title === '映画チケット')    t.imgData = SAMPLE_IMGS.nasu;
+          if (t.title === 'ランチおごり券')  t.imgData = SAMPLE_IMGS.robo;
+          if (t.title === '誕生日スペシャル') t.imgData = SAMPLE_IMGS.bana;
+        }
       });
     } else {
       // 初回: サンプルチケットを生成
