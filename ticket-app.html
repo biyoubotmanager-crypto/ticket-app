@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>チケット</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -82,6 +84,10 @@
   .copy-btn.copied { background: #1D9E75; }
   .close-share-btn { width: 100%; background: none; border: 1px solid #ddd; border-radius: 12px; padding: 12px; font-size: 14px; cursor: pointer; color: #111; }
   .empty { text-align: center; padding: 48px 20px; color: #aaa; font-size: 14px; }
+  @keyframes pulseBadge {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.8); }
+  }
   .tear-overlay { display:none; position:absolute; top:0; left:0; right:0; bottom:0; z-index:100; pointer-events:none; overflow:hidden; border-radius:20px; }
   .tear-overlay.active { display:block; }
   .tear-top { position:absolute; top:0; left:0; right:0; height:50%; transform-origin:top center; animation:tearTop 0.6s ease-in forwards; }
@@ -281,6 +287,47 @@
     </div>
   </div>
 
+  <!-- 受け取り画面 -->
+  <div class="screen" id="receive-screen">
+    <div class="top-bar">
+      <span class="back-btn" onclick="closeReceive()">← 戻る</span>
+      <h1>チケットを受け取る</h1>
+      <span></span>
+    </div>
+    <div style="padding:16px 20px;display:flex;flex-direction:column;gap:14px;">
+      <!-- 方法選択タブ -->
+      <div style="display:flex;background:#f0f0f5;border-radius:12px;padding:4px;">
+        <button onclick="switchReceiveMode('camera')" id="rmode-camera" style="flex:1;border:none;background:#fff;color:#111;border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;">📷 QRを読み取る</button>
+        <button onclick="switchReceiveMode('url')" id="rmode-url" style="flex:1;border:none;background:transparent;color:#666;border-radius:10px;padding:10px;font-size:13px;cursor:pointer;">🔗 リンクを貼る</button>
+      </div>
+
+      <!-- カメラ読み取り -->
+      <div id="receive-camera-panel">
+        <div style="background:#000;border-radius:14px;overflow:hidden;position:relative;aspect-ratio:1/1;">
+          <video id="qr-video" playsinline style="width:100%;height:100%;object-fit:cover;display:none;"></video>
+          <canvas id="qr-canvas" style="display:none;"></canvas>
+          <div id="qr-placeholder" style="display:flex;position:absolute;top:0;left:0;right:0;bottom:0;align-items:center;justify-content:center;color:#fff;font-size:13px;text-align:center;padding:20px;">
+            下のボタンを押してカメラを起動<br>QRコードを枠内に映してください
+          </div>
+          <div id="qr-scanframe" style="display:none;position:absolute;top:15%;left:15%;right:15%;bottom:15%;border:3px solid #7F77DD;border-radius:12px;box-shadow:0 0 0 100vmax rgba(0,0,0,0.3);"></div>
+        </div>
+        <button onclick="toggleCamera()" id="camera-btn" style="width:100%;margin-top:10px;background:#7F77DD;color:white;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;">📷 カメラを起動</button>
+        <div id="camera-status" style="font-size:12px;color:#888;text-align:center;margin-top:8px;min-height:16px;"></div>
+      </div>
+
+      <!-- URL貼り付け -->
+      <div id="receive-url-panel" style="display:none;">
+        <div style="background:#f8f8f8;border-radius:14px;padding:16px;">
+          <div style="font-size:13px;color:#666;margin-bottom:10px;">友達から送られてきたリンクを貼り付けてください</div>
+          <textarea id="receive-url-input" placeholder="https://..." style="width:100%;height:80px;font-size:13px;padding:10px;border:1px solid #ddd;border-radius:10px;resize:none;color:#111;background:#fff;"></textarea>
+          <button onclick="receiveFromUrl()" style="width:100%;margin-top:10px;background:#7F77DD;color:white;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;">受け取る</button>
+        </div>
+      </div>
+
+      <div id="receive-result" style="display:none;"></div>
+    </div>
+  </div>
+
   <!-- 設定画面 -->
   <div class="screen" id="settings-screen">
     <div class="top-bar">
@@ -315,6 +362,17 @@
       <p id="confirm-ticket-name" style="font-size:13px;color:#666;text-align:center;margin-bottom:20px;"></p>
       <button onclick="confirmUse()" style="width:100%;background:#7F77DD;color:white;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;">使用する</button>
       <button onclick="document.getElementById('confirm-wrap').style.display='none'" style="width:100%;background:none;border:1px solid #ddd;border-radius:12px;padding:14px;font-size:14px;cursor:pointer;color:#666;">キャンセル</button>
+    </div>
+  </div>
+
+  <!-- チケット削除確認シート -->
+  <div id="delete-wrap" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.45);z-index:300;align-items:flex-end;justify-content:center;">
+    <div style="background:#fff;border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;">
+      <p style="font-size:16px;font-weight:600;color:#111;text-align:center;margin-bottom:6px;">チケットを削除しますか？</p>
+      <p id="delete-ticket-name" style="font-size:13px;color:#666;text-align:center;margin-bottom:4px;"></p>
+      <p style="font-size:12px;color:#e24b4a;text-align:center;margin-bottom:20px;">この操作は取り消せません</p>
+      <button onclick="confirmDelete()" style="width:100%;background:#e24b4a;color:white;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;">削除する</button>
+      <button onclick="cancelDelete()" style="width:100%;background:none;border:1px solid #ddd;border-radius:12px;padding:14px;font-size:14px;cursor:pointer;color:#666;">キャンセル</button>
     </div>
   </div>
 
@@ -948,6 +1006,7 @@ function createTicket() {
 }
 
 function openDetail(i) {
+  window._viewingReceived = false;
   currentTicket = i;
   const t = tickets[i];
   const remain = t.total - t.used;
@@ -1010,7 +1069,9 @@ function useTicket() {
 
 function confirmUse() {
   document.getElementById('confirm-wrap').style.display = 'none';
-  const t = tickets[currentTicket];
+  const arr = window._viewingReceived ? receivedTickets : tickets;
+  const t = arr[currentTicket];
+  if (!t) return;
   // カラーをtear-top/bottomに設定
   const grad = `linear-gradient(135deg,${COLOR_GRADS[t.color][0]},${COLOR_GRADS[t.color][1]})`;
   const tt = document.getElementById('tear-top');
@@ -1026,14 +1087,13 @@ function confirmUse() {
     setTimeout(() => overlay.classList.remove('active'), 1400);
   }
   // データ更新
-  t.used++;
+  t.used = (t.used || 0) + 1;
   document.getElementById('remain-info').textContent = `残り ${t.total - t.used} / ${t.total} 枚`;
-  // 使用済みなら使用ボタンを無効化
   if (t.total - t.used <= 0) {
     const btn = document.getElementById('use-btn');
     if (btn) { btn.disabled = true; btn.style.opacity = '0.4'; btn.textContent = '使用済み'; }
   }
-  saveTickets();
+  if (window._viewingReceived) saveReceivedTickets(); else saveTickets();
 }
 
 function showAlert(msg) {
@@ -1048,15 +1108,24 @@ function openShare() {
   const t = tickets[currentTicket];
   document.getElementById('share-title').textContent = t.title;
   document.getElementById('share-sub').textContent = `「${t.desc || t.title}」を友達に送ります`;
-  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify({ title: t.title, desc: t.desc, total: t.total, color: t.color }))));
-  document.getElementById('share-link-text').textContent = `https://ticket-app.example.com/receive?t=${encoded.slice(0, 36)}...`;
-  drawShareQR(t.title + currentTicket);
+  const shareData = {
+    title: t.title, desc: t.desc, expiry: t.expiry,
+    total: t.total, color: t.color,
+    imgData: t.imgData || null
+  };
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(shareData))));
+  const pageUrl = location.href.split('?')[0].split('#')[0];
+  const shareUrl = pageUrl + '?ticket=' + encoded;
+  document.getElementById('share-link-text').textContent = shareUrl;
+  drawShareQR(shareUrl);
   document.getElementById('copy-btn').textContent = 'リンクをコピー 📋';
   document.getElementById('copy-btn').classList.remove('copied');
   showScreen('share-screen');
 }
 
 function copyLink() {
+  const url = document.getElementById('share-link-text').textContent;
+  if (navigator.clipboard) navigator.clipboard.writeText(url).catch(()=>{});
   const btn = document.getElementById('copy-btn');
   btn.textContent = 'コピーしました ✓';
   btn.classList.add('copied');
@@ -1064,14 +1133,16 @@ function copyLink() {
 }
 
 function shareLine() {
+  const url = document.getElementById('share-link-text').textContent;
   const t = tickets[currentTicket];
-  const msg = `🎟「${t.title}」チケット\n${t.desc}\nhttps://ticket-app.example.com/receive?ticket=${encodeURIComponent(t.title)}`;
+  const msg = `🎟「${t.title}」チケットを送ります！\n${url}`;
   window.open(`https://line.me/R/msg/text/?${encodeURIComponent(msg)}`);
 }
 
 function shareSMS() {
+  const url = document.getElementById('share-link-text').textContent;
   const t = tickets[currentTicket];
-  const msg = `🎟「${t.title}」チケット https://ticket-app.example.com/receive?ticket=${encodeURIComponent(t.title)}`;
+  const msg = `🎟「${t.title}」チケット ${url}`;
   window.open(`sms:?body=${encodeURIComponent(msg)}`);
 }
 
@@ -1095,20 +1166,19 @@ function drawQR(id, size, seed) {
   }
 }
 
-function drawShareQR(seed) {
-  const svg = document.getElementById('share-qr');
-  svg.innerHTML = '';
-  const n = 13, size = 160, cell = Math.floor(size / n);
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = ((h << 5) - h) + seed.charCodeAt(i);
-  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
-    const corner = (r < 3 && c < 3) || (r < 3 && c > n - 4) || (r > n - 4 && c < 3);
-    if (corner || !!(Math.abs(h ^ (r * 19 + c * 37)) % 2)) {
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', c * cell + 1); rect.setAttribute('y', r * cell + 1);
-      rect.setAttribute('width', cell - 1); rect.setAttribute('height', cell - 1);
-      rect.setAttribute('fill', '#2C2C2A'); svg.appendChild(rect);
-    }
+function drawShareQR(url) {
+  const wrap = document.querySelector('.share-qr-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<canvas id="share-qr-canvas"></canvas>';
+  const canvasEl = document.getElementById('share-qr-canvas');
+  if (typeof QRCode !== 'undefined') {
+    QRCode.toCanvas(canvasEl, url, { width: 180, margin: 1, errorCorrectionLevel: 'M' }, (err) => {
+      if (err) console.error('QR generation error:', err);
+    });
+  } else {
+    // ライブラリ未ロード時のフォールバック
+    wrap.innerHTML = '<div style="padding:20px;color:#888;font-size:12px;text-align:center;">QR生成中...</div>';
+    setTimeout(() => drawShareQR(url), 500);
   }
 }
 
@@ -1119,10 +1189,92 @@ function switchTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   if (tab === 'received') {
-    document.getElementById('ticket-list').innerHTML = '<div class="empty">📬<br>受け取ったチケットはまだありません</div>';
+    renderReceivedTickets();
   } else {
     renderTicketList();
   }
+}
+
+
+// ============================================================
+// スワイプ削除機能
+// ============================================================
+function setupSwipe(el) {
+  let startX = 0, currentX = 0, isDragging = false;
+  const threshold = 40; // これ以上スワイプしたら開く
+  const maxSwipe = 80;  // 削除ボタンの幅
+
+  const onStart = (x) => {
+    startX = x;
+    currentX = el.dataset.swiped === '1' ? -maxSwipe : 0;
+    isDragging = true;
+    el.style.transition = 'none';
+  };
+  const onMove = (x) => {
+    if (!isDragging) return;
+    let dx = x - startX + (el.dataset.swiped === '1' ? -maxSwipe : 0);
+    dx = Math.max(-maxSwipe, Math.min(0, dx));
+    el.style.transform = `translateX(${dx}px)`;
+    currentX = dx;
+  };
+  const onEnd = () => {
+    if (!isDragging) return;
+    isDragging = false;
+    el.style.transition = 'transform 0.25s ease';
+    if (currentX < -threshold) {
+      el.style.transform = `translateX(-${maxSwipe}px)`;
+      el.dataset.swiped = '1';
+    } else {
+      el.style.transform = 'translateX(0)';
+      el.dataset.swiped = '0';
+    }
+  };
+
+  el.addEventListener('touchstart', e => { onStart(e.touches[0].clientX); }, {passive: true});
+  el.addEventListener('touchmove',  e => { onMove(e.touches[0].clientX); }, {passive: true});
+  el.addEventListener('touchend',   onEnd);
+  el.addEventListener('mousedown',  e => { onStart(e.clientX); });
+  document.addEventListener('mousemove', e => { if (isDragging) onMove(e.clientX); });
+  document.addEventListener('mouseup',   () => { if (isDragging) onEnd(); });
+}
+
+function resetSwipe(el) {
+  el.style.transition = 'transform 0.25s ease';
+  el.style.transform = 'translateX(0)';
+  el.dataset.swiped = '0';
+}
+
+let pendingDelete = null;
+
+function showDeleteConfirm(type, index, title) {
+  pendingDelete = { type, index };
+  document.getElementById('delete-ticket-name').textContent = '「' + title + '」';
+  document.getElementById('delete-wrap').style.display = 'flex';
+}
+
+function cancelDelete() {
+  pendingDelete = null;
+  document.getElementById('delete-wrap').style.display = 'none';
+}
+
+function confirmDelete() {
+  if (!pendingDelete) return;
+  const { type, index } = pendingDelete;
+  if (type === 'mine') {
+    const removed = tickets.splice(index, 1)[0];
+    // imgDataのlocalStorage削除
+    if (removed) {
+      try { localStorage.removeItem(imgKey(removed)); } catch(e) {}
+    }
+    saveTickets();
+    renderTicketList();
+  } else if (type === 'received') {
+    receivedTickets.splice(index, 1);
+    saveReceivedTickets();
+    renderReceivedTickets();
+  }
+  pendingDelete = null;
+  document.getElementById('delete-wrap').style.display = 'none';
 }
 
 function renderTicketList() {
@@ -1130,31 +1282,73 @@ function renderTicketList() {
   list.innerHTML = '';
   if (tickets.length === 0) {
     list.innerHTML = '<div class="empty">チケットがありません<br>+ ボタンで作成しましょう</div>';
+    document.getElementById('home-count').textContent = '0枚';
     return;
   }
   tickets.forEach((t, i) => {
     const remain = t.total - t.used;
+    const status = getExpiryStatus(t.expiry);
+    const isExpired = status.expired;
+    const isUsedUp = remain <= 0;
+    const isInactive = isExpired || isUsedUp;
+
+    // スワイプ削除用のラッパー
+    const wrap = document.createElement('div');
+    wrap.className = 'ticket-wrap';
+    wrap.style.cssText = 'position:relative;overflow:hidden;margin:12px 20px;border-radius:16px;';
+
+    // 削除ボタン（背面に配置）
+    const delBg = document.createElement('div');
+    delBg.style.cssText = 'position:absolute;top:0;right:0;bottom:0;width:80px;background:#e24b4a;display:flex;align-items:center;justify-content:center;z-index:1;';
+    delBg.innerHTML = '<button style="background:none;border:none;color:white;font-size:28px;cursor:pointer;padding:0;width:100%;height:100%;">×</button>';
+    delBg.querySelector('button').onclick = (e) => {
+      e.stopPropagation();
+      showDeleteConfirm('mine', i, t.title);
+    };
+    wrap.appendChild(delBg);
+
     const div = document.createElement('div');
     div.className = 'ticket-card';
-    div.style.background = `linear-gradient(135deg,${COLOR_GRADS[t.color][0]},${COLOR_GRADS[t.color][1]})`;
-    div.onclick = () => openDetail(i);
+    div.style.cssText = `position:relative;margin:0;background:linear-gradient(135deg,${COLOR_GRADS[t.color][0]},${COLOR_GRADS[t.color][1]});transition:transform 0.25s ease;z-index:2;${isInactive ? 'filter:grayscale(0.5);opacity:0.65;' : ''}`;
+    div.onclick = () => {
+      if (div.dataset.swiped === '1') { resetSwipe(div); return; }
+      openDetail(i);
+    };
     if (t.imgData) {
       const img = document.createElement('img');
-      img.className = 'tc-img'; img.src = t.imgData; img.style.cssText = 'position:absolute;top:0;right:0;height:100%;width:auto;opacity:0.5;object-fit:none;object-position:right center;border-radius:16px;';
+      img.className = 'tc-img'; img.src = t.imgData;
+      img.style.cssText = 'position:absolute;top:0;right:0;height:100%;width:auto;opacity:0.5;object-fit:none;object-position:right center;border-radius:16px;';
       div.appendChild(img);
     }
     const content = document.createElement('div');
     content.className = 'tc-content';
     const expiryStr = t.expiry ? t.expiry : '無制限';
+
+    // バッジのデザインを状態で変える
+    let badgeHtml = '';
+    if (isExpired) {
+      badgeHtml = '<span style="background:#888;color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;">期限切れ</span>';
+    } else if (isUsedUp) {
+      badgeHtml = '<span style="background:#aaa;color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;">使用済</span>';
+    } else {
+      // 有効状態を目立たせる（緑＋光るドット）
+      badgeHtml = '<span style="background:#1D9E75;color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;background:#7FFF00;border-radius:50%;box-shadow:0 0 6px #7FFF00;animation:pulseBadge 1.5s ease-in-out infinite;"></span>有効</span>';
+    }
+
     content.innerHTML = `
       <div class="ticket-title">${t.title}</div>
       <div class="ticket-sub">${t.desc || '有効期限: ' + expiryStr}</div>
       <div class="ticket-footer">
         <span style="font-size:12px;opacity:0.85">残り ${remain} / ${t.total} 枚</span>
-        <span class="ticket-badge" style="${remain === 0 ? 'background:rgba(255,255,255,0.15)' : ''}">${remain === 0 ? '使用済' : '有効'}</span>
+        ${badgeHtml}
       </div>`;
     div.appendChild(content);
-    list.appendChild(div);
+
+    // スワイプイベント
+    setupSwipe(div);
+
+    wrap.appendChild(div);
+    list.appendChild(wrap);
   });
   document.getElementById('home-count').textContent = tickets.length + '枚';
 }
@@ -1259,6 +1453,8 @@ function resetAll() {
     if (key) localStorage.removeItem(key);
   }
   myName = '';
+  receivedTickets = [];
+  try { localStorage.removeItem('receivedTickets'); } catch(e) {}
   createSampleTickets();
   document.getElementById('home-title').textContent = '🎟 チケット';
   goHome();
@@ -1318,8 +1514,369 @@ if (charBtnRow) {
     charBtnRow.appendChild(btn);
   });
 }
+
+// ============================================================
+// チケット受け取り機能（URL + QRカメラ読み取り）
+// ============================================================
+let receivedTickets = [];
+let qrStream = null;
+let qrScanning = false;
+let qrAnimId = null;
+
+function loadReceivedTickets() {
+  try {
+    const saved = localStorage.getItem('receivedTickets');
+    if (saved) receivedTickets = JSON.parse(saved);
+  } catch(e) { receivedTickets = []; }
+}
+
+function saveReceivedTickets() {
+  try { localStorage.setItem('receivedTickets', JSON.stringify(receivedTickets)); } catch(e) {}
+}
+
+function renderReceivedTickets() {
+  const list = document.getElementById('ticket-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  // 受け取るボタン（カメラ起動 + リンク入力）
+  const btnDiv = document.createElement('div');
+  btnDiv.style.cssText = 'padding:12px 20px 4px;display:flex;flex-direction:column;gap:8px;';
+  btnDiv.innerHTML = `
+    <button onclick="openReceiveCamera()" style="width:100%;background:#7F77DD;color:white;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(127,119,221,0.3);">📷 QRコードを読み取る</button>
+    <button onclick="openReceiveUrl()" style="width:100%;background:#fff;color:#7F77DD;border:1px solid #7F77DD;border-radius:12px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;">🔗 リンクから受け取る</button>
+  `;
+  list.appendChild(btnDiv);
+
+  if (receivedTickets.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.innerHTML = '📬<br>受け取ったチケットはまだありません<br><span style="font-size:12px;color:#aaa;">上のボタンから受け取ってみましょう</span>';
+    list.appendChild(empty);
+    return;
+  }
+
+  receivedTickets.forEach((t, i) => {
+    const remain = t.total - (t.used || 0);
+    const status = getExpiryStatus(t.expiry);
+    const isExpired = status.expired;
+    const isUsedUp = remain <= 0;
+    const isInactive = isExpired || isUsedUp;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'ticket-wrap';
+    wrap.style.cssText = 'position:relative;overflow:hidden;margin:12px 20px;border-radius:16px;';
+
+    const delBg = document.createElement('div');
+    delBg.style.cssText = 'position:absolute;top:0;right:0;bottom:0;width:80px;background:#e24b4a;display:flex;align-items:center;justify-content:center;z-index:1;';
+    delBg.innerHTML = '<button style="background:none;border:none;color:white;font-size:28px;cursor:pointer;padding:0;width:100%;height:100%;">×</button>';
+    delBg.querySelector('button').onclick = (e) => {
+      e.stopPropagation();
+      showDeleteConfirm('received', i, t.title);
+    };
+    wrap.appendChild(delBg);
+
+    const div = document.createElement('div');
+    div.className = 'ticket-card';
+    div.style.cssText = `position:relative;margin:0;background:linear-gradient(135deg,${COLOR_GRADS[t.color][0]},${COLOR_GRADS[t.color][1]});transition:transform 0.25s ease;z-index:2;${isInactive ? 'filter:grayscale(0.5);opacity:0.65;' : ''}`;
+    div.onclick = () => {
+      if (div.dataset.swiped === '1') { resetSwipe(div); return; }
+      openReceivedDetail(i);
+    };
+    if (t.imgData) {
+      const img = document.createElement('img');
+      img.style.cssText = 'position:absolute;top:0;right:0;height:100%;width:auto;opacity:0.5;object-fit:none;object-position:right center;border-radius:16px;';
+      img.src = t.imgData;
+      div.appendChild(img);
+    }
+    const content = document.createElement('div');
+    content.className = 'tc-content';
+
+    let badgeHtml = '';
+    if (isExpired) {
+      badgeHtml = '<span style="background:#888;color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;">期限切れ</span>';
+    } else if (isUsedUp) {
+      badgeHtml = '<span style="background:#aaa;color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;">使用済</span>';
+    } else {
+      badgeHtml = '<span style="background:#1D9E75;color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;background:#7FFF00;border-radius:50%;box-shadow:0 0 6px #7FFF00;animation:pulseBadge 1.5s ease-in-out infinite;"></span>有効</span>';
+    }
+
+    content.innerHTML = `
+      <div class="ticket-title">${t.title}</div>
+      <div class="ticket-sub">${t.desc || ''}</div>
+      <div class="ticket-footer">
+        <span style="font-size:12px;opacity:0.85">残り ${remain} / ${t.total} 枚</span>
+        ${badgeHtml}
+      </div>`;
+    div.appendChild(content);
+
+    setupSwipe(div);
+
+    wrap.appendChild(div);
+    list.appendChild(wrap);
+  });
+}
+
+function openReceivedDetail(i) {
+  window._viewingReceived = true;
+  currentTicket = i;
+  const t = receivedTickets[i];
+  if (!t) return;
+  const remain = t.total - (t.used || 0);
+  document.getElementById('detail-title').textContent = t.title;
+  document.getElementById('detail-desc').textContent = t.desc || '';
+  document.getElementById('detail-expiry').textContent = t.expiry ? '有効期限: ' + t.expiry : '有効期限: 無制限';
+  document.getElementById('detail-color-overlay').style.background =
+    `linear-gradient(135deg,${COLOR_GRADS[t.color][0]},${COLOR_GRADS[t.color][1]})`;
+  document.getElementById('remain-info').textContent = `残り ${remain} / ${t.total} 枚`;
+  const bgImg = document.getElementById('detail-bg-img');
+  if (bgImg) {
+    if (t.imgData) { bgImg.src = t.imgData; bgImg.style.display = 'block'; }
+    else { bgImg.src = ''; bgImg.style.display = 'none'; }
+  }
+  drawQR('qr-svg', 90, t.title + i);
+  const useBtn = document.getElementById('use-btn');
+  if (useBtn) {
+    const expired = getExpiryStatus(t.expiry).expired;
+    if (expired || remain <= 0) {
+      useBtn.disabled = true; useBtn.style.opacity = '0.4'; useBtn.style.cursor = 'not-allowed';
+      useBtn.textContent = expired ? '期限切れ' : '使用済み';
+    } else {
+      useBtn.disabled = false; useBtn.style.opacity = '1'; useBtn.style.cursor = 'pointer';
+      useBtn.textContent = 'タップして使用';
+    }
+  }
+  showScreen('detail-screen');
+}
+
+function openReceive() {
+  document.getElementById('receive-result').style.display = 'none';
+  document.getElementById('receive-url-input').value = '';
+  switchReceiveMode('camera');
+  showScreen('receive-screen');
+}
+
+function openReceiveCamera() {
+  document.getElementById('receive-result').style.display = 'none';
+  document.getElementById('receive-url-input').value = '';
+  switchReceiveMode('camera');
+  showScreen('receive-screen');
+  // カメラを自動起動
+  setTimeout(() => {
+    if (!qrScanning) toggleCamera();
+  }, 400);
+}
+
+function openReceiveUrl() {
+  document.getElementById('receive-result').style.display = 'none';
+  document.getElementById('receive-url-input').value = '';
+  switchReceiveMode('url');
+  showScreen('receive-screen');
+}
+
+function closeReceive() {
+  stopCamera();
+  goHome();
+}
+
+function switchReceiveMode(mode) {
+  const cam = document.getElementById('receive-camera-panel');
+  const url = document.getElementById('receive-url-panel');
+  const btnC = document.getElementById('rmode-camera');
+  const btnU = document.getElementById('rmode-url');
+  if (mode === 'camera') {
+    cam.style.display = 'block'; url.style.display = 'none';
+    btnC.style.background = '#fff'; btnC.style.color = '#111'; btnC.style.fontWeight = '600';
+    btnU.style.background = 'transparent'; btnU.style.color = '#666'; btnU.style.fontWeight = 'normal';
+  } else {
+    cam.style.display = 'none'; url.style.display = 'block';
+    btnU.style.background = '#fff'; btnU.style.color = '#111'; btnU.style.fontWeight = '600';
+    btnC.style.background = 'transparent'; btnC.style.color = '#666'; btnC.style.fontWeight = 'normal';
+    stopCamera();
+  }
+}
+
+async function toggleCamera() {
+  if (qrScanning) { stopCamera(); return; }
+  const video = document.getElementById('qr-video');
+  const placeholder = document.getElementById('qr-placeholder');
+  const frame = document.getElementById('qr-scanframe');
+  const btn = document.getElementById('camera-btn');
+  const status = document.getElementById('camera-status');
+  status.textContent = 'カメラを起動中...';
+  try {
+    qrStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }
+    });
+    video.srcObject = qrStream;
+    video.setAttribute('playsinline', true);
+    await video.play();
+    video.style.display = 'block';
+    placeholder.style.display = 'none';
+    frame.style.display = 'block';
+    btn.textContent = '⏹ カメラを停止';
+    btn.style.background = '#e24b4a';
+    status.textContent = 'QRコードを枠内に映してください';
+    qrScanning = true;
+    scanQR();
+  } catch(e) {
+    status.textContent = 'カメラへのアクセスが拒否されました。設定から許可してください。';
+    console.error('Camera error:', e);
+  }
+}
+
+function stopCamera() {
+  qrScanning = false;
+  if (qrAnimId) { cancelAnimationFrame(qrAnimId); qrAnimId = null; }
+  if (qrStream) {
+    qrStream.getTracks().forEach(t => t.stop());
+    qrStream = null;
+  }
+  const video = document.getElementById('qr-video');
+  const placeholder = document.getElementById('qr-placeholder');
+  const frame = document.getElementById('qr-scanframe');
+  const btn = document.getElementById('camera-btn');
+  const status = document.getElementById('camera-status');
+  if (video) { video.srcObject = null; video.style.display = 'none'; }
+  if (placeholder) placeholder.style.display = 'flex';
+  if (frame) frame.style.display = 'none';
+  if (btn) { btn.textContent = '📷 カメラを起動'; btn.style.background = '#7F77DD'; }
+  if (status) status.textContent = '';
+}
+
+function scanQR() {
+  if (!qrScanning) return;
+  const video = document.getElementById('qr-video');
+  const canvas = document.getElementById('qr-canvas');
+  if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const cx = canvas.getContext('2d');
+    cx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    try {
+      const imageData = cx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = (typeof jsQR !== 'undefined') ? jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' }) : null;
+      if (code && code.data) {
+        handleScannedData(code.data);
+        return;
+      }
+    } catch(e) { console.error('scan err', e); }
+  }
+  qrAnimId = requestAnimationFrame(scanQR);
+}
+
+function handleScannedData(data) {
+  stopCamera();
+  document.getElementById('camera-status').textContent = '読み取り成功！処理中...';
+  processReceivedData(data);
+}
+
+function receiveFromUrl() {
+  const input = document.getElementById('receive-url-input').value.trim();
+  if (!input) { showReceiveError('リンクを入力してください'); return; }
+  processReceivedData(input);
+}
+
+function processReceivedData(raw) {
+  let encoded = '';
+  const match = raw.match(/[?&]ticket=([^&\s]+)/);
+  if (match) encoded = match[1];
+  else if (raw.length > 20 && !raw.includes(' ') && !raw.startsWith('http')) encoded = raw;
+  else { showReceiveError('リンクが正しくありません'); return; }
+
+  try {
+    const data = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+    if (!data.title) throw new Error('invalid');
+    const exists = receivedTickets.some(t => t.title === data.title && t.color === data.color && t.desc === data.desc);
+    if (exists) {
+      showReceiveMessage('info', `「${data.title}」はすでに受け取り済みです`);
+      return;
+    }
+    const newT = {
+      title: data.title, desc: data.desc || '',
+      expiry: data.expiry || '',
+      total: data.total || 1, used: 0,
+      color: data.color || 0,
+      imgData: data.imgData || null,
+      received: true
+    };
+    receivedTickets.unshift(newT);
+    saveReceivedTickets();
+    showReceiveSuccess(newT);
+  } catch(e) {
+    console.error(e);
+    showReceiveError('データの読み込みに失敗しました');
+  }
+}
+
+function showReceiveError(msg) {
+  const r = document.getElementById('receive-result');
+  r.style.display = 'block';
+  r.innerHTML = `<div style="background:#fff3f3;border-radius:12px;padding:14px;text-align:center;color:#e24b4a;font-size:14px;">${msg}</div>`;
+}
+
+function showReceiveMessage(type, msg) {
+  const r = document.getElementById('receive-result');
+  r.style.display = 'block';
+  r.innerHTML = `<div style="background:#fff8e1;border-radius:12px;padding:14px;text-align:center;color:#888;font-size:14px;">${msg}</div>`;
+}
+
+function showReceiveSuccess(t) {
+  const r = document.getElementById('receive-result');
+  r.style.display = 'block';
+  r.innerHTML = `
+    <div style="background:#f0fff4;border:1px solid #1D9E75;border-radius:14px;padding:16px;text-align:center;">
+      <div style="font-size:24px;margin-bottom:6px;">🎟</div>
+      <div style="font-size:16px;font-weight:700;color:#0F6E56;margin-bottom:4px;">「${t.title}」を受け取りました！</div>
+      <div style="font-size:13px;color:#666;margin-bottom:12px;">${t.desc || ''}</div>
+      <button onclick="goToReceivedList()" style="background:#1D9E75;color:white;border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer;">受け取り一覧へ</button>
+    </div>`;
+}
+
+function goToReceivedList() {
+  stopCamera();
+  showScreen('home-screen');
+  const tabs = document.querySelectorAll('.tab');
+  if (tabs.length >= 2) {
+    tabs.forEach(t => t.classList.remove('active'));
+    tabs[1].classList.add('active');
+  }
+  renderReceivedTickets();
+}
+
+function checkUrlTicket() {
+  const match = location.search.match(/[?&]ticket=([^&]+)/);
+  if (!match) return;
+  const encoded = match[1];
+  try {
+    const data = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+    if (!data.title) return;
+    const exists = receivedTickets.some(t => t.title === data.title && t.color === data.color && t.desc === data.desc);
+    if (!exists) {
+      receivedTickets.unshift({
+        title: data.title, desc: data.desc || '',
+        expiry: data.expiry || '', total: data.total || 1, used: 0,
+        color: data.color || 0, imgData: data.imgData || null, received: true
+      });
+      saveReceivedTickets();
+    }
+    setTimeout(() => {
+      const tabs = document.querySelectorAll('.tab');
+      if (tabs.length >= 2) {
+        tabs.forEach(t => t.classList.remove('active'));
+        tabs[1].classList.add('active');
+      }
+      renderReceivedTickets();
+    }, 200);
+    history.replaceState({}, '', location.pathname);
+  } catch(e) { console.error('URL ticket parse error', e); }
+}
+
+
 loadTickets();
+loadReceivedTickets();
 loadName();
+checkUrlTicket();
 renderTicketList();
 </script>
 </body>
