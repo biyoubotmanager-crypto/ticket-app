@@ -1466,10 +1466,14 @@ function resetAll() {
 
 
 function createSampleTickets() {
+  // 1週間後の日付を計算
+  const weekLater = new Date();
+  weekLater.setDate(weekLater.getDate() + 7);
+  const weekStr = weekLater.toISOString().slice(0, 10);
   tickets = [
-    { title:'映画チケット',    desc:'シネコンで使用可',     expiry:'2025-08-31', total:2, used:0, color:0, imgData: SAMPLE_IMGS.nasu },
-    { title:'ランチおごり券',  desc:'好きなランチを奢ります', expiry:'',           total:3, used:2, color:1, imgData: SAMPLE_IMGS.robo },
-    { title:'誕生日スペシャル', desc:'お誕生日おめでとう！',   expiry:'2025-05-15', total:1, used:1, color:2, imgData: SAMPLE_IMGS.bana },
+    { title:'映画チケット',    desc:'シネコンで使用可',     expiry: weekStr, total:2, used:0, color:0, imgData: SAMPLE_IMGS.nasu },
+    { title:'ランチおごり券',  desc:'好きなランチを奢ります', expiry:'',       total:3, used:0, color:1, imgData: SAMPLE_IMGS.robo },
+    { title:'誕生日スペシャル', desc:'お誕生日おめでとう！',   expiry: weekStr, total:1, used:0, color:2, imgData: SAMPLE_IMGS.bana },
   ];
   saveTickets();
 }
