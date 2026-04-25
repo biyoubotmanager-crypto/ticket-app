@@ -1908,6 +1908,53 @@ function checkUrlTicket() {
 let peer = null;
 let myPeerId = null;
 
+const PEER_CONFIG = {
+  config: {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:global.stun.twilio.com:3478' }
+    ]
+  },
+  debug: 1
+};
+
+function attachPeerHandlers(p) {
+  p.on('open', (openId) => {
+    myPeerId = openId;
+    updatePeerIdDisplay();
+    console.log('[P2P] connected as', openId);
+  });
+  p.on('connection', (conn) => {
+    console.log('[P2P] incoming connection from', conn.peer);
+    conn.on('open', () => {
+      console.log('[P2P] connection opened');
+    });
+    conn.on('data', (data) => {
+      console.log('[P2P] data received', data && data.type);
+      if (data && data.type === 'ticket') {
+        handleP2PTicket(data.ticket, data.senderName || '友達');
+      }
+    });
+    conn.on('error', (e) => console.error('[P2P] conn error', e));
+  });
+  p.on('disconnected', () => {
+    console.log('[P2P] disconnected, reconnecting...');
+    try { p.reconnect(); } catch(e) {}
+  });
+  p.on('error', (err) => {
+    console.error('[P2P] peer error', err.type, err.message);
+    if (err.type === 'unavailable-id') {
+      const newId = 't' + Math.random().toString(36).substr(2, 10);
+      localStorage.setItem('peerId', newId);
+      myPeerId = newId;
+      try { p.destroy(); } catch(e) {}
+      peer = new Peer(newId, PEER_CONFIG);
+      attachPeerHandlers(peer);
+    }
+  });
+}
+
 function initPeer() {
   const storedId = localStorage.getItem('peerId');
   const id = storedId || ('t' + Math.random().toString(36).substr(2, 10));
@@ -1916,26 +1963,8 @@ function initPeer() {
   updatePeerIdDisplay();
 
   try {
-    peer = new Peer(id);
-    peer.on('open', (openId) => {
-      myPeerId = openId;
-      updatePeerIdDisplay();
-    });
-    peer.on('connection', (conn) => {
-      conn.on('data', (data) => {
-        if (data && data.type === 'ticket') {
-          handleP2PTicket(data.ticket, data.senderName || '友達');
-        }
-      });
-    });
-    peer.on('error', (err) => {
-      if (err.type === 'unavailable-id') {
-        const newId = 't' + Math.random().toString(36).substr(2, 10);
-        localStorage.setItem('peerId', newId);
-        myPeerId = newId;
-        peer = new Peer(newId);
-      }
-    });
+    peer = new Peer(id, PEER_CONFIG);
+    attachPeerHandlers(peer);
   } catch(e) {
     console.error('PeerJS init error', e);
   }
@@ -2005,6 +2034,12 @@ function sendTicketDirect() {
   const recipientId = (input ? input.value : '').trim();
   if (!recipientId) { showAlert('送信先の受け取りIDを入力してください'); return; }
   if (!peer) { showAlert('通信の準備中です。少し待ってからお試しください'); return; }
+  if (peer.disconnected) {
+    try { peer.reconnect(); } catch(e) {}
+    showAlert('通信を再接続中です。数秒後にもう一度お試しください');
+    return;
+  }
+  if (recipientId === myPeerId) { showAlert('自分自身には送れません'); return; }
 
   const ticket = tickets[currentTicket];
   if (!ticket) { showAlert('チケットが見つかりません'); return; }
@@ -2014,32 +2049,46 @@ function sendTicketDirect() {
   if (btn) { btn.textContent = '送信中...'; btn.disabled = true; }
 
   let opened = false;
-  const conn = peer.connect(recipientId, { reliable: true });
+  let finished = false;
+  const finish = (success, msg) => {
+    if (finished) return;
+    finished = true;
+    if (btn) { btn.textContent = '送信'; btn.disabled = false; }
+    if (success && input) input.value = '';
+    showAlert(msg);
+  };
+
+  console.log('[P2P] connecting to', recipientId);
+  const conn = peer.connect(recipientId, { reliable: true, serialization: 'json' });
 
   const timeout = setTimeout(() => {
     if (!opened) {
-      if (btn) { btn.textContent = '送信'; btn.disabled = false; }
-      showAlert('接続できませんでした。IDを確認してください');
+      try { conn.close(); } catch(e) {}
+      finish(false, '接続できませんでした。IDが正しいか、相手がアプリを開いているか確認してください');
     }
-  }, 10000);
+  }, 20000);
 
   conn.on('open', () => {
     opened = true;
     clearTimeout(timeout);
+    console.log('[P2P] sending ticket to', recipientId);
     const myName = localStorage.getItem('myName') || '友達';
-    conn.send({ type: 'ticket', ticket: Object.assign({}, ticket, { imgData }), senderName: myName });
+    try {
+      conn.send({ type: 'ticket', ticket: Object.assign({}, ticket, { imgData }), senderName: myName });
+    } catch(e) {
+      finish(false, '送信エラー: ' + e.message);
+      return;
+    }
     setTimeout(() => {
-      conn.close();
-      if (btn) { btn.textContent = '送信'; btn.disabled = false; }
-      if (input) input.value = '';
-      showAlert('チケットを送信しました！');
-    }, 1500);
+      try { conn.close(); } catch(e) {}
+      finish(true, 'チケットを送信しました！');
+    }, 2500);
   });
 
-  conn.on('error', () => {
+  conn.on('error', (err) => {
+    console.error('[P2P] send error', err);
     clearTimeout(timeout);
-    if (btn) { btn.textContent = '送信'; btn.disabled = false; }
-    showAlert('送信に失敗しました。IDを確認してください');
+    finish(false, '送信に失敗しました：' + (err && err.type === 'peer-unavailable' ? '相手のIDが見つかりません' : 'IDを確認してください'));
   });
 }
 
