@@ -4,8 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>チケット</title>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -99,6 +100,11 @@
 </style>
 </head>
 <body>
+<!-- P2P受信通知バナー -->
+<div id="p2p-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#7F77DD;color:white;padding:14px 20px;font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,0.2);display:none;align-items:center;justify-content:space-between;">
+  <span id="p2p-banner-text"></span>
+  <span onclick="dismissP2PBanner()" style="cursor:pointer;opacity:0.8;padding-left:12px;">✕</span>
+</div>
 <div class="app">
 
   <!-- 名前入力モーダル（初回起動時） -->
@@ -166,7 +172,6 @@
           <div class="img-tools">
             <button class="img-tool-btn active" id="tool-draw" onclick="setTool('draw')">✏️ 描く</button>
             <button class="img-tool-btn" id="tool-sticker" onclick="setTool('sticker')">🌟 スタンプ</button>
-            <button class="img-tool-btn" id="tool-ai" onclick="setTool('ai')">✨ AI生成</button>
             <button class="img-tool-btn" onclick="triggerUpload()">📷 画像</button>
             <button class="img-tool-btn" onclick="clearCanvas()">🗑 消去</button>
           </div>
@@ -219,13 +224,6 @@
               </div>
             </div>
           </div>
-          <div id="ai-panel" class="ai-panel" style="display:none">
-            <div class="ai-input-row">
-              <input class="ai-input" id="ai-prompt" placeholder="例: 桜、宇宙、海、花火…"/>
-              <button class="ai-gen-btn" id="ai-btn" onclick="generateAIImage()">生成 ✨</button>
-            </div>
-            <div class="ai-status" id="ai-status"></div>
-          </div>
         </div>
       </div>
       <button class="submit-btn" onclick="createTicket()">チケットを作成</button>
@@ -247,7 +245,7 @@
           <div class="bt-title" id="detail-title"></div>
           <div class="bt-sub" id="detail-desc"></div>
           <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:16px" id="detail-expiry"></div>
-          <div class="qr-box"><svg id="qr-svg" width="90" height="90" viewBox="0 0 90 90"></svg></div><br>
+          <div class="qr-box" id="detail-qr-box"><canvas id="qr-canvas-detail" width="120" height="120" style="display:block;"></canvas></div><br>
           <button class="use-btn" id="use-btn" onclick="useTicket()">タップして使用</button>
         </div>
         <div class="tear-overlay" id="tear-overlay">
@@ -276,11 +274,14 @@
         <h2 id="share-title" style="margin-bottom:4px"></h2>
         <p id="share-sub" style="font-size:13px;color:#666;margin-bottom:16px"></p>
         <div class="share-qr-wrap"><svg id="share-qr" width="160" height="160" viewBox="0 0 160 160"></svg></div>
-        <div class="share-link-box" id="share-link-text"></div>
-        <button class="copy-btn" id="copy-btn" onclick="copyLink()">リンクをコピー 📋</button>
-        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px">
-          <button class="action-btn" onclick="shareLine()">LINEで送る</button>
-          <button class="action-btn" onclick="shareSMS()">メッセージで送る</button>
+        <!-- アプリ内直接送信 -->
+        <div style="border-top:1px solid #eee;padding-top:14px;margin-top:4px;">
+          <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:4px;">📡 アプリで直接送る</div>
+          <div style="font-size:11px;color:#888;margin-bottom:10px;">相手の「受け取りID」を入力して送信</div>
+          <div style="display:flex;gap:8px;">
+            <input id="direct-peer-id-input" placeholder="相手の受け取りID" style="flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:10px;font-size:13px;color:#111;background:#fff;outline:none;" />
+            <button id="direct-send-btn" onclick="sendTicketDirect()" style="background:#7F77DD;color:white;border:none;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">送信</button>
+          </div>
         </div>
         <button class="close-share-btn" onclick="showScreen('detail-screen')">閉じる</button>
       </div>
@@ -339,6 +340,13 @@
       <div style="background:#f8f8f8;border-radius:14px;padding:16px 20px;">
         <div style="font-size:12px;color:#888;margin-bottom:4px;">ユーザー名</div>
         <div style="font-size:15px;font-weight:600;color:#111;" id="settings-name-display"></div>
+      </div>
+      <div style="background:#f0eeff;border-radius:14px;padding:16px 20px;">
+        <div style="font-size:12px;color:#888;margin-bottom:4px;">受け取りID（チケットを受け取るときに相手に教える）</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="font-size:13px;font-weight:600;color:#7F77DD;flex:1;word-break:break-all;" id="settings-peer-id">接続中...</div>
+          <button onclick="copyMyPeerId()" style="background:#7F77DD;color:white;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">コピー</button>
+        </div>
       </div>
       <button onclick="showResetConfirm()" style="border:1px solid #ffcccc;border-radius:12px;padding:14px;font-size:14px;cursor:pointer;background:#fff;color:#e24b4a;text-align:left;">🗑 データをリセットして最初から</button>
       <p style="font-size:11px;color:#aaa;line-height:1.6;padding:0 4px;">リセットすると作成済みのチケットと名前がすべて削除されます。</p>
@@ -475,7 +483,8 @@ function setTool(t) {
   });
   document.getElementById('draw-panel').style.display = t === 'draw' ? 'flex' : 'none';
   document.getElementById('sticker-panel').style.display = t === 'sticker' ? 'block' : 'none';
-  document.getElementById('ai-panel').style.display = t === 'ai' ? 'flex' : 'none';
+  const aiPanel = document.getElementById('ai-panel');
+  if (aiPanel) aiPanel.style.display = t === 'ai' ? 'flex' : 'none';
   const imgPanel = document.getElementById('img-panel');
   if (imgPanel) imgPanel.style.display = 'none';
   // スタンプモード以外はオーバーレイのタッチを無効化（描画を妨げないように）
@@ -1028,7 +1037,7 @@ function openDetail(i) {
       bgImg.style.display = 'none';
     }
   }
-  drawQR('qr-svg', 90, t.title + i);
+  drawQR();
   // use-btnを毎回リセット
   const useBtn = document.getElementById('use-btn');
   if (useBtn) {
@@ -1108,89 +1117,97 @@ function openShare() {
   const t = tickets[currentTicket];
   document.getElementById('share-title').textContent = t.title;
   document.getElementById('share-sub').textContent = `「${t.desc || t.title}」を友達に送ります`;
-  const shareData = {
-    title: t.title, desc: t.desc, expiry: t.expiry,
-    total: t.total, color: t.color,
-    imgData: t.imgData || null
-  };
-  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(shareData))));
   const pageUrl = location.href.split('?')[0].split('#')[0];
-  const shareUrl = pageUrl + '?ticket=' + encoded;
-  document.getElementById('share-link-text').textContent = shareUrl;
-  drawShareQR(shareUrl);
-  document.getElementById('copy-btn').textContent = 'リンクをコピー 📋';
-  document.getElementById('copy-btn').classList.remove('copied');
+
+  // QR用は画像なしの軽量データのみ
+  const qrData = {
+    title: t.title, desc: t.desc || '', expiry: t.expiry || '',
+    total: t.total, color: t.color
+  };
+  const qrEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(qrData))));
+  const qrUrl = pageUrl + '?ticket=' + qrEncoded;
+
   showScreen('share-screen');
-}
-
-function copyLink() {
-  const url = document.getElementById('share-link-text').textContent;
-  if (navigator.clipboard) navigator.clipboard.writeText(url).catch(()=>{});
-  const btn = document.getElementById('copy-btn');
-  btn.textContent = 'コピーしました ✓';
-  btn.classList.add('copied');
-  setTimeout(() => { btn.textContent = 'リンクをコピー 📋'; btn.classList.remove('copied'); }, 2500);
-}
-
-function shareLine() {
-  const url = document.getElementById('share-link-text').textContent;
-  const t = tickets[currentTicket];
-  const msg = `🎟「${t.title}」チケットを送ります！\n${url}`;
-  window.open(`https://line.me/R/msg/text/?${encodeURIComponent(msg)}`);
-}
-
-function shareSMS() {
-  const url = document.getElementById('share-link-text').textContent;
-  const t = tickets[currentTicket];
-  const msg = `🎟「${t.title}」チケット ${url}`;
-  window.open(`sms:?body=${encodeURIComponent(msg)}`);
+  setTimeout(() => drawShareQR(qrUrl), 50);
 }
 
 // ============================================================
 // QRコード描画
 // ============================================================
-function drawQR(id, size, seed) {
-  const svg = document.getElementById(id);
-  svg.innerHTML = '';
-  const n = 9, cell = Math.floor(size / n);
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = ((h << 5) - h) + seed.charCodeAt(i);
-  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
-    const corner = (r < 3 && c < 3) || (r < 3 && c > n - 4) || (r > n - 4 && c < 3);
-    if (corner || !!(Math.abs(h ^ (r * 17 + c * 31)) % 3)) {
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', c * cell + 1); rect.setAttribute('y', r * cell + 1);
-      rect.setAttribute('width', cell - 1); rect.setAttribute('height', cell - 1);
-      rect.setAttribute('fill', '#333'); svg.appendChild(rect);
+// 軽量QR描画: qrcode-generator使用・同期処理で即座に描画
+function renderQRToCanvas(canvas, text, size) {
+  if (typeof qrcode === 'undefined') {
+    // ライブラリ未ロード時はリトライ
+    setTimeout(() => renderQRToCanvas(canvas, text, size), 200);
+    return;
+  }
+  try {
+    const qr = qrcode(0, 'L');
+    qr.addData(text);
+    qr.make();
+    const count = qr.getModuleCount();
+    const cell = Math.max(2, Math.floor(size / (count + 2)));
+    const realSize = cell * (count + 2);
+    canvas.width = realSize;
+    canvas.height = realSize;
+    canvas.style.width = size + 'px';
+    canvas.style.height = size + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, realSize, realSize);
+    ctx.fillStyle = '#000';
+    for (let r = 0; r < count; r++) {
+      for (let c = 0; c < count; c++) {
+        if (qr.isDark(r, c)) {
+          ctx.fillRect((c + 1) * cell, (r + 1) * cell, cell, cell);
+        }
+      }
     }
+  } catch(e) {
+    console.error('QR error:', e);
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = '#e24b4a'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('QRエラー', size/2, size/2);
   }
 }
+
+function drawQR() {
+  const canvas = document.getElementById('qr-canvas-detail');
+  if (!canvas) return;
+  const arr = window._viewingReceived ? receivedTickets : tickets;
+  const t = arr[currentTicket];
+  if (!t) return;
+  const pageUrl = location.href.split('?')[0].split('#')[0];
+  const qrData = {
+    title: t.title, desc: t.desc || '', expiry: t.expiry || '',
+    total: t.total, color: t.color
+  };
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(qrData))));
+  const url = pageUrl + '?ticket=' + encoded;
+  renderQRToCanvas(canvas, url, 120);
+}
+
 
 function drawShareQR(url) {
   const wrap = document.querySelector('.share-qr-wrap');
   if (!wrap) return;
   wrap.innerHTML = '<canvas id="share-qr-canvas"></canvas>';
   const canvasEl = document.getElementById('share-qr-canvas');
-  if (typeof QRCode !== 'undefined') {
-    QRCode.toCanvas(canvasEl, url, { width: 180, margin: 1, errorCorrectionLevel: 'M' }, (err) => {
-      if (err) console.error('QR generation error:', err);
-    });
-  } else {
-    // ライブラリ未ロード時のフォールバック
-    wrap.innerHTML = '<div style="padding:20px;color:#888;font-size:12px;text-align:center;">QR生成中...</div>';
-    setTimeout(() => drawShareQR(url), 500);
-  }
+  renderQRToCanvas(canvasEl, url, 200);
 }
 
-// ============================================================
-// 画面制御・一覧表示
-// ============================================================
+
 function switchTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
+  const fab = document.querySelector('.fab');
   if (tab === 'received') {
+    if (fab) fab.style.display = 'none';
     renderReceivedTickets();
   } else {
+    if (fab) fab.style.display = '';
     renderTicketList();
   }
 }
@@ -1359,8 +1376,6 @@ function openCreate() {
   document.getElementById('new-title').value = '';
   document.getElementById('new-desc').value = '';
   document.getElementById('new-expiry').value = '';
-  document.getElementById('ai-prompt').value = '';
-  document.getElementById('ai-status').textContent = '';
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   document.querySelectorAll('.color-dot').forEach((d, i) => d.classList.toggle('selected', i === 0));
   setTool('draw');
@@ -1543,12 +1558,18 @@ function renderReceivedTickets() {
   if (!list) return;
   list.innerHTML = '';
 
-  // 受け取るボタン（カメラ起動 + リンク入力）
   const btnDiv = document.createElement('div');
   btnDiv.style.cssText = 'padding:12px 20px 4px;display:flex;flex-direction:column;gap:8px;';
+  const peerId = myPeerId || localStorage.getItem('peerId') || '接続中...';
   btnDiv.innerHTML = `
     <button onclick="openReceiveCamera()" style="width:100%;background:#7F77DD;color:white;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(127,119,221,0.3);">📷 QRコードを読み取る</button>
-    <button onclick="openReceiveUrl()" style="width:100%;background:#fff;color:#7F77DD;border:1px solid #7F77DD;border-radius:12px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;">🔗 リンクから受け取る</button>
+    <div style="background:#f0eeff;border-radius:12px;padding:12px 16px;">
+      <div style="font-size:11px;color:#888;margin-bottom:4px;">受け取りID（送り主にこのIDを教えてください）</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="font-size:13px;font-weight:600;color:#7F77DD;flex:1;word-break:break-all;" id="received-tab-peer-id">${peerId}</div>
+        <button onclick="copyMyPeerId()" style="background:#7F77DD;color:white;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">コピー</button>
+      </div>
+    </div>
   `;
   list.appendChild(btnDiv);
 
@@ -1638,7 +1659,6 @@ function openReceivedDetail(i) {
     if (t.imgData) { bgImg.src = t.imgData; bgImg.style.display = 'block'; }
     else { bgImg.src = ''; bgImg.style.display = 'none'; }
   }
-  drawQR('qr-svg', 90, t.title + i);
   const useBtn = document.getElementById('use-btn');
   if (useBtn) {
     const expired = getExpiryStatus(t.expiry).expired;
@@ -1651,6 +1671,7 @@ function openReceivedDetail(i) {
     }
   }
   showScreen('detail-screen');
+  setTimeout(() => drawQR(), 50);
 }
 
 function openReceive() {
@@ -1708,6 +1729,10 @@ async function toggleCamera() {
   const btn = document.getElementById('camera-btn');
   const status = document.getElementById('camera-status');
   status.textContent = 'カメラを起動中...';
+  if (typeof jsQR === 'undefined') {
+    status.textContent = 'QR読み取りライブラリの読み込みに失敗しました。ネット接続を確認してください。';
+    return;
+  }
   try {
     qrStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment' }
@@ -1759,7 +1784,7 @@ function scanQR() {
     cx.drawImage(video, 0, 0, canvas.width, canvas.height);
     try {
       const imageData = cx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = (typeof jsQR !== 'undefined') ? jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' }) : null;
+      const code = (typeof jsQR !== 'undefined') ? jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' }) : null;
       if (code && code.data) {
         handleScannedData(code.data);
         return;
@@ -1877,11 +1902,153 @@ function checkUrlTicket() {
 }
 
 
+// ============================================================
+// P2P直接通信 (PeerJS / WebRTC)
+// ============================================================
+let peer = null;
+let myPeerId = null;
+
+function initPeer() {
+  const storedId = localStorage.getItem('peerId');
+  const id = storedId || ('t' + Math.random().toString(36).substr(2, 10));
+  if (!storedId) localStorage.setItem('peerId', id);
+  myPeerId = id;
+  updatePeerIdDisplay();
+
+  try {
+    peer = new Peer(id);
+    peer.on('open', (openId) => {
+      myPeerId = openId;
+      updatePeerIdDisplay();
+    });
+    peer.on('connection', (conn) => {
+      conn.on('data', (data) => {
+        if (data && data.type === 'ticket') {
+          handleP2PTicket(data.ticket, data.senderName || '友達');
+        }
+      });
+    });
+    peer.on('error', (err) => {
+      if (err.type === 'unavailable-id') {
+        const newId = 't' + Math.random().toString(36).substr(2, 10);
+        localStorage.setItem('peerId', newId);
+        myPeerId = newId;
+        peer = new Peer(newId);
+      }
+    });
+  } catch(e) {
+    console.error('PeerJS init error', e);
+  }
+}
+
+function updatePeerIdDisplay() {
+  const id = myPeerId || '接続中...';
+  const s = document.getElementById('settings-peer-id');
+  if (s) s.textContent = id;
+  const r = document.getElementById('received-tab-peer-id');
+  if (r) r.textContent = id;
+}
+
+function handleP2PTicket(ticketData, senderName) {
+  const exists = receivedTickets.some(t =>
+    t.title === ticketData.title && t.color === ticketData.color && t.desc === ticketData.desc
+  );
+  if (!exists) {
+    receivedTickets.unshift({
+      title: ticketData.title,
+      desc: ticketData.desc || '',
+      expiry: ticketData.expiry || '',
+      total: ticketData.total || 1,
+      used: 0,
+      color: ticketData.color || 0,
+      imgData: ticketData.imgData || null,
+      received: true
+    });
+    saveReceivedTickets();
+    renderReceivedTickets();
+  }
+  showP2PBanner('🎟 ' + senderName + 'から「' + ticketData.title + '」を受け取りました！');
+}
+
+function showP2PBanner(msg) {
+  const banner = document.getElementById('p2p-banner');
+  const text = document.getElementById('p2p-banner-text');
+  if (!banner || !text) return;
+  text.textContent = msg;
+  banner.style.display = 'flex';
+  setTimeout(() => { banner.style.display = 'none'; }, 5000);
+}
+
+function dismissP2PBanner() {
+  const banner = document.getElementById('p2p-banner');
+  if (banner) banner.style.display = 'none';
+}
+
+function copyMyPeerId() {
+  const id = myPeerId || localStorage.getItem('peerId');
+  if (!id) { showAlert('IDの取得中です。少しお待ちください'); return; }
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(id).then(() => showAlert('受け取りIDをコピーしました！'));
+  } else {
+    const tmp = document.createElement('textarea');
+    tmp.value = id;
+    document.body.appendChild(tmp);
+    tmp.select();
+    document.execCommand('copy');
+    document.body.removeChild(tmp);
+    showAlert('受け取りIDをコピーしました！');
+  }
+}
+
+function sendTicketDirect() {
+  const input = document.getElementById('direct-peer-id-input');
+  const recipientId = (input ? input.value : '').trim();
+  if (!recipientId) { showAlert('送信先の受け取りIDを入力してください'); return; }
+  if (!peer) { showAlert('通信の準備中です。少し待ってからお試しください'); return; }
+
+  const ticket = tickets[currentTicket];
+  if (!ticket) { showAlert('チケットが見つかりません'); return; }
+  const imgData = localStorage.getItem(imgKey(ticket.id));
+
+  const btn = document.getElementById('direct-send-btn');
+  if (btn) { btn.textContent = '送信中...'; btn.disabled = true; }
+
+  let opened = false;
+  const conn = peer.connect(recipientId, { reliable: true });
+
+  const timeout = setTimeout(() => {
+    if (!opened) {
+      if (btn) { btn.textContent = '送信'; btn.disabled = false; }
+      showAlert('接続できませんでした。IDを確認してください');
+    }
+  }, 10000);
+
+  conn.on('open', () => {
+    opened = true;
+    clearTimeout(timeout);
+    const myName = localStorage.getItem('myName') || '友達';
+    conn.send({ type: 'ticket', ticket: Object.assign({}, ticket, { imgData }), senderName: myName });
+    setTimeout(() => {
+      conn.close();
+      if (btn) { btn.textContent = '送信'; btn.disabled = false; }
+      if (input) input.value = '';
+      showAlert('チケットを送信しました！');
+    }, 1500);
+  });
+
+  conn.on('error', () => {
+    clearTimeout(timeout);
+    if (btn) { btn.textContent = '送信'; btn.disabled = false; }
+    showAlert('送信に失敗しました。IDを確認してください');
+  });
+}
+
 loadTickets();
 loadReceivedTickets();
 loadName();
 checkUrlTicket();
 renderTicketList();
+initPeer();
 </script>
 </body>
 </html>
