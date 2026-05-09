@@ -100,8 +100,10 @@
 </style>
 </head>
 <body>
+<!-- 接続状態バー（最上部・常時表示） -->
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v1.4 接続中...</div>
 <!-- P2P受信通知バナー -->
-<div id="p2p-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#7F77DD;color:white;padding:14px 20px;font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,0.2);display:none;align-items:center;justify-content:space-between;">
+<div id="p2p-banner" style="display:none;position:fixed;top:30px;left:0;right:0;z-index:9999;background:#7F77DD;color:white;padding:14px 20px;font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,0.2);align-items:center;justify-content:space-between;">
   <span id="p2p-banner-text"></span>
   <span onclick="dismissP2PBanner()" style="cursor:pointer;opacity:0.8;padding-left:12px;">✕</span>
 </div>
@@ -121,7 +123,7 @@
   <!-- ホーム画面 -->
   <div class="screen active" id="home-screen">
     <div class="top-bar">
-      <h1 id="home-title">🎟 チケット <span id="conn-status" style="font-size:10px;font-weight:normal;color:#aaa;">●接続中</span></h1>
+      <h1 id="home-title">🎟 チケット</h1>
       <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:13px;color:#888" id="home-count">3枚</span><button onclick="openSettings()" style="background:none;border:none;font-size:18px;cursor:pointer;padding:2px;color:#888;">⚙️</button></div>
     </div>
     <div class="tab-bar">
@@ -1920,8 +1922,11 @@ const PEER_CONFIG = {
 };
 
 function setConnStatus(text, color) {
-  const el = document.getElementById('conn-status');
-  if (el) { el.textContent = text; el.style.color = color; }
+  const bar = document.getElementById('conn-bar');
+  if (bar) {
+    bar.textContent = 'v1.4 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.style.background = color || '#888';
+  }
 }
 
 function attachPeerHandlers(p) {
@@ -2041,7 +2046,7 @@ function sendTicketDirect() {
   try { _sendTicketDirect(); } catch(e) { showAlert('送信エラー: ' + e.message); console.error(e); }
 }
 function _sendTicketDirect() {
-  showAlert('送信処理を開始します（v1.3）');
+  showAlert('送信処理開始（v1.4）');
   const input = document.getElementById('direct-peer-id-input');
   const recipientId = (input ? input.value : '').trim();
   if (!recipientId) { showAlert('送信先の受け取りIDを入力してください'); return; }
