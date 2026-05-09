@@ -101,7 +101,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v1.6 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v1.7 接続中...</div>
 <!-- P2P受信通知バナー -->
 <div id="p2p-banner" style="display:none;position:fixed;top:30px;left:0;right:0;z-index:9999;background:#7F77DD;color:white;padding:14px 20px;font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,0.2);align-items:center;justify-content:space-between;">
   <span id="p2p-banner-text"></span>
@@ -1924,7 +1924,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = 'v1.6 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = 'v1.7 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     bar.style.background = color || '#888';
   }
 }
@@ -2064,7 +2064,12 @@ function _sendTicketDirect() {
   const fromArr = (window._viewingReceived ? receivedTickets : tickets) || [];
   const ticket = fromArr[currentTicket];
   if (!ticket) { showAlert('チケットが見つかりません'); return; }
-  const imgData = ticket.imgData || localStorage.getItem(imgKey(ticket));
+  let imgData = ticket.imgData || localStorage.getItem(imgKey(ticket));
+  // 大きすぎる画像はP2Pで送らない（WebRTC DataChannelの制限回避）
+  if (imgData && imgData.length > 30000) {
+    console.log('[P2P] imgData too large (' + imgData.length + '), stripping');
+    imgData = null;
+  }
 
   const btn = document.getElementById('direct-send-btn');
   if (btn) { btn.textContent = '送信中...'; btn.disabled = true; }
@@ -2109,7 +2114,8 @@ function _sendTicketDirect() {
   conn.on('error', (err) => {
     console.error('[P2P] send error', err);
     clearTimeout(timeout);
-    finish(false, '送信に失敗しました：' + (err && err.type === 'peer-unavailable' ? '相手のIDが見つかりません' : 'IDを確認してください'));
+    const t = err && (err.type || err.message) || 'unknown';
+    finish(false, '送信失敗(' + t + ')');
   });
 }
 
