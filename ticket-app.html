@@ -106,7 +106,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v2.4 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v2.5 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -1562,9 +1562,12 @@ function renderShareFriendsList() {
     b.textContent = f.name;
     b.style.cssText = 'background:#f0eeff;color:#7F77DD;border:1px solid #d4cfff;border-radius:20px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;';
     b.onclick = () => {
+      const fromArr = (window._viewingReceived ? receivedTickets : tickets) || [];
+      const t = fromArr[currentTicket];
+      const title = (t && t.title) || 'このチケット';
+      if (!confirm(`「${title}」を ${f.name} に送りますか？`)) return;
       const input = document.getElementById('direct-peer-id-input');
       if (input) input.value = f.peerId;
-      // タップで即送信
       sendTicketDirect();
     };
     wrap.appendChild(b);
@@ -2109,7 +2112,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = 'v2.4 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = 'v2.5 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     bar.style.background = color || '#888';
   }
 }
