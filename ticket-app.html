@@ -151,7 +151,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v3.7 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v3.8 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -412,11 +412,13 @@
         <div style="font-size:12px;color:#888;margin-bottom:4px;">ユーザー名</div>
         <div style="font-size:15px;font-weight:600;color:#111;" id="settings-name-display"></div>
       </div>
-      <div style="background:#f0eeff;border-radius:14px;padding:16px 20px;">
-        <div style="font-size:12px;color:#888;margin-bottom:4px;">受け取りID（チケットを受け取るときに相手に教える）</div>
+      <div style="background:linear-gradient(135deg,#FFE5F1,#E8E2FF);border-radius:18px;padding:18px 16px;text-align:center;">
+        <div style="font-size:12px;color:#9b8bcc;margin-bottom:10px;font-weight:600;">✨ あなたの受け取りQR ✨</div>
+        <div style="background:#fff;border-radius:14px;padding:10px;display:inline-block;margin-bottom:10px;"><canvas id="profile-id-qr" width="160" height="160" style="display:block;"></canvas></div>
+        <div style="font-size:11px;color:#7b6bb0;margin-bottom:10px;line-height:1.6;">友達にQRをスキャンしてもらう、<br>またはIDを伝えてください</div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <div style="font-size:13px;font-weight:600;color:#7F77DD;flex:1;word-break:break-all;" id="settings-peer-id">接続中...</div>
-          <button onclick="copyMyPeerId()" style="background:#7F77DD;color:white;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">コピー</button>
+          <div style="font-size:12px;font-weight:600;color:#7F77DD;flex:1;word-break:break-all;background:rgba(255,255,255,0.7);padding:7px 10px;border-radius:10px;" id="settings-peer-id">接続中...</div>
+          <button onclick="copyMyPeerId()" style="background:linear-gradient(135deg,#FFB6C1,#B19CD9);color:white;border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">コピー</button>
         </div>
       </div>
       <button onclick="openFriends()" style="border:1px solid #7F77DD;border-radius:12px;padding:14px;font-size:14px;cursor:pointer;background:#fff;color:#7F77DD;text-align:left;font-weight:600;">👥 友達を管理する</button>
@@ -1299,12 +1301,12 @@ function renderQRToCanvas(canvas, text, size) {
 }
 
 function drawMyIdQR() {
-  const canvas = document.getElementById('my-id-qr');
-  if (!canvas) return;
   const id = myPeerId || localStorage.getItem('peerId') || '';
   if (!id) return;
-  // 「TICKETID:〜」プレフィックスでID用QRと判別
-  renderQRToCanvas(canvas, 'TICKETID:' + id, 140);
+  const c1 = document.getElementById('profile-id-qr');
+  if (c1) renderQRToCanvas(c1, 'TICKETID:' + id, 160);
+  const c2 = document.getElementById('my-id-qr'); // 旧位置（フォールバック）
+  if (c2) renderQRToCanvas(c2, 'TICKETID:' + id, 140);
 }
 
 function drawQR() {
@@ -1781,7 +1783,9 @@ function updateHomeTitle() {
 function openSettings() {
   const el = document.getElementById('settings-name-display');
   if (el) el.textContent = myName || '未設定';
+  updatePeerIdDisplay();
   showScreen('settings-screen');
+  setTimeout(() => drawMyIdQR(), 30);
 }
 
 function resetName() {
@@ -1927,21 +1931,10 @@ function renderReceivedTickets() {
 
   const btnDiv = document.createElement('div');
   btnDiv.style.cssText = 'padding:12px 20px 4px;display:flex;flex-direction:column;gap:8px;';
-  const peerId = myPeerId || localStorage.getItem('peerId') || '接続中...';
   btnDiv.innerHTML = `
     <button onclick="openReceiveCamera()" style="width:100%;background:linear-gradient(135deg,#FFB6C1,#B19CD9);color:white;border:none;border-radius:18px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(177,156,217,0.35);letter-spacing:0.5px;">📷 友達のQRを読み取る</button>
-    <div style="background:linear-gradient(135deg,#FFE5F1,#E8E2FF);border-radius:18px;padding:14px 16px;text-align:center;">
-      <div style="font-size:11px;color:#9b8bcc;margin-bottom:8px;font-weight:600;">✨ あなたの受け取りQR ✨</div>
-      <div style="background:#fff;border-radius:14px;padding:10px;display:inline-block;margin-bottom:8px;"><canvas id="my-id-qr" width="140" height="140" style="display:block;"></canvas></div>
-      <div style="font-size:12px;color:#5b4fb8;margin-bottom:4px;">送り主にQRをスキャンしてもらう、またはIDを伝えてください</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
-        <div style="font-size:12px;font-weight:600;color:#7F77DD;flex:1;word-break:break-all;background:rgba(255,255,255,0.7);padding:6px 10px;border-radius:10px;" id="received-tab-peer-id">${peerId}</div>
-        <button onclick="copyMyPeerId()" style="background:linear-gradient(135deg,#FFB6C1,#B19CD9);color:white;border:none;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">コピー</button>
-      </div>
-    </div>
   `;
   list.appendChild(btnDiv);
-  setTimeout(() => drawMyIdQR(), 30);
 
   const activeReceived = receivedTickets.map((t,i)=>({t,i})).filter(x => !isTrashedTicket(x.t));
   if (activeReceived.length === 0) {
@@ -2330,7 +2323,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v3.7 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v3.8 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
