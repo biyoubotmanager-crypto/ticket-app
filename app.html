@@ -101,7 +101,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v1.7 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v1.8 接続中...</div>
 <!-- P2P受信通知バナー -->
 <div id="p2p-banner" style="display:none;position:fixed;top:30px;left:0;right:0;z-index:9999;background:#7F77DD;color:white;padding:14px 20px;font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,0.2);align-items:center;justify-content:space-between;">
   <span id="p2p-banner-text"></span>
@@ -1924,7 +1924,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = 'v1.7 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = 'v1.8 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     bar.style.background = color || '#888';
   }
 }
@@ -2042,14 +2042,38 @@ function copyMyPeerId() {
   }
 }
 
+function compressImageData(dataUrl, maxWidth, maxHeight, quality) {
+  return new Promise((resolve) => {
+    if (!dataUrl) { resolve(null); return; }
+    if (dataUrl.length < 8000) { resolve(dataUrl); return; }
+    const img = new Image();
+    img.onload = () => {
+      let w = img.naturalWidth || img.width;
+      let h = img.naturalHeight || img.height;
+      const ratio = Math.min(maxWidth / w, maxHeight / h, 1);
+      w = Math.max(1, Math.round(w * ratio));
+      h = Math.max(1, Math.round(h * ratio));
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const cx = c.getContext('2d');
+      cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h);
+      cx.drawImage(img, 0, 0, w, h);
+      try { resolve(c.toDataURL('image/jpeg', quality)); }
+      catch(e) { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
 function sendTicketDirect() {
-  try { _sendTicketDirect(); } catch(e) {
+  _sendTicketDirect().catch((e) => {
     const detail = (e && (e.message || e.toString())) || JSON.stringify(e) || 'unknown';
     showAlert('送信エラー: ' + detail);
     console.error('[P2P] catch:', e);
-  }
+  });
 }
-function _sendTicketDirect() {
+async function _sendTicketDirect() {
   const input = document.getElementById('direct-peer-id-input');
   const recipientId = (input ? input.value : '').trim();
   if (!recipientId) { showAlert('送信先の受け取りIDを入力してください'); return; }
@@ -2065,14 +2089,17 @@ function _sendTicketDirect() {
   const ticket = fromArr[currentTicket];
   if (!ticket) { showAlert('チケットが見つかりません'); return; }
   let imgData = ticket.imgData || localStorage.getItem(imgKey(ticket));
-  // 大きすぎる画像はP2Pで送らない（WebRTC DataChannelの制限回避）
-  if (imgData && imgData.length > 30000) {
-    console.log('[P2P] imgData too large (' + imgData.length + '), stripping');
-    imgData = null;
-  }
 
   const btn = document.getElementById('direct-send-btn');
-  if (btn) { btn.textContent = '送信中...'; btn.disabled = true; }
+  if (btn) { btn.textContent = '画像圧縮中...'; btn.disabled = true; }
+
+  // 画像を圧縮（340x130のJPEG品質0.6）
+  if (imgData) {
+    const before = imgData.length;
+    imgData = await compressImageData(imgData, 340, 130, 0.6);
+    console.log('[P2P] image compressed:', before, '→', imgData ? imgData.length : 0);
+  }
+  if (btn) btn.textContent = '送信中...';
 
   let opened = false;
   let finished = false;
@@ -2084,8 +2111,8 @@ function _sendTicketDirect() {
     showAlert(msg);
   };
 
-  console.log('[P2P] connecting to', recipientId);
-  const conn = peer.connect(recipientId, { reliable: true, serialization: 'json' });
+  console.log('[P2P] connecting to', recipientId, 'imgSize=', imgData ? imgData.length : 0);
+  const conn = peer.connect(recipientId, { reliable: true });
 
   const timeout = setTimeout(() => {
     if (!opened) {
@@ -2108,7 +2135,7 @@ function _sendTicketDirect() {
     setTimeout(() => {
       try { conn.close(); } catch(e) {}
       finish(true, 'チケットを送信しました！');
-    }, 2500);
+    }, 4000);
   });
 
   conn.on('error', (err) => {
