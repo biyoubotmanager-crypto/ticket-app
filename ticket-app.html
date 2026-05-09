@@ -151,7 +151,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v3.8 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v3.9 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -421,7 +421,8 @@
           <button onclick="copyMyPeerId()" style="background:linear-gradient(135deg,#FFB6C1,#B19CD9);color:white;border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">コピー</button>
         </div>
       </div>
-      <button onclick="openFriends()" style="border:1px solid #7F77DD;border-radius:12px;padding:14px;font-size:14px;cursor:pointer;background:#fff;color:#7F77DD;text-align:left;font-weight:600;">👥 友達を管理する</button>
+      <button onclick="openReceiveCamera()" style="border:none;border-radius:18px;padding:15px;font-size:15px;cursor:pointer;background:linear-gradient(135deg,#FFB6C1,#B19CD9);color:white;text-align:center;font-weight:700;letter-spacing:0.5px;box-shadow:0 4px 14px rgba(177,156,217,0.35);">📷 友達のQRを読み取る</button>
+      <button onclick="openFriends()" style="border:1.5px solid #f0e6ff;border-radius:16px;padding:14px;font-size:14px;cursor:pointer;background:#fff;color:#5b4fb8;text-align:center;font-weight:700;">👥 友達を管理する</button>
       <button onclick="showResetConfirm()" style="border:1px solid #ffcccc;border-radius:12px;padding:14px;font-size:14px;cursor:pointer;background:#fff;color:#e24b4a;text-align:left;">🗑 データをリセットして最初から</button>
       <p style="font-size:11px;color:#aaa;line-height:1.6;padding:0 4px;">リセットすると作成済みのチケットと名前がすべて削除されます。</p>
 
@@ -1931,10 +1932,7 @@ function renderReceivedTickets() {
 
   const btnDiv = document.createElement('div');
   btnDiv.style.cssText = 'padding:12px 20px 4px;display:flex;flex-direction:column;gap:8px;';
-  btnDiv.innerHTML = `
-    <button onclick="openReceiveCamera()" style="width:100%;background:linear-gradient(135deg,#FFB6C1,#B19CD9);color:white;border:none;border-radius:18px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(177,156,217,0.35);letter-spacing:0.5px;">📷 友達のQRを読み取る</button>
-  `;
-  list.appendChild(btnDiv);
+  // ボタンはプロフィール画面へ移動済み
 
   const activeReceived = receivedTickets.map((t,i)=>({t,i})).filter(x => !isTrashedTicket(x.t));
   if (activeReceived.length === 0) {
@@ -2323,7 +2321,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v3.8 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v3.9 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
