@@ -106,7 +106,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v3.2 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v3.3 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -1090,16 +1090,30 @@ function openDetail(i) {
   if (useBtn) {
     const expired = getExpiryStatus(t.expiry).expired;
     const usedUp = (t.total - remain) >= t.total;
-    if (expired || usedUp) {
+    if (expired) {
+      useBtn.disabled = false;
+      useBtn.style.opacity = '1';
+      useBtn.style.cursor = 'pointer';
+      useBtn.style.background = '#e24b4a';
+      useBtn.style.color = '#fff';
+      useBtn.textContent = '🗑 削除する';
+      useBtn.onclick = () => deleteExpiredCurrent();
+    } else if (usedUp) {
       useBtn.disabled = true;
       useBtn.style.opacity = '0.4';
       useBtn.style.cursor = 'not-allowed';
-      useBtn.textContent = expired ? '期限切れ' : '使用済み';
+      useBtn.style.background = '';
+      useBtn.style.color = '';
+      useBtn.textContent = '使用済み';
+      useBtn.onclick = useTicket;
     } else {
       useBtn.disabled = false;
       useBtn.style.opacity = '1';
       useBtn.style.cursor = 'pointer';
+      useBtn.style.background = '';
+      useBtn.style.color = '';
       useBtn.textContent = 'タップして使用';
+      useBtn.onclick = useTicket;
     }
   }
   showScreen('detail-screen');
@@ -1112,6 +1126,25 @@ function getExpiryStatus(expiry) {
   const exp = new Date(expiry); exp.setHours(0,0,0,0);
   const diff = Math.round((exp - today) / (1000 * 60 * 60 * 24));
   return { expired: diff < 0, daysLeft: diff };
+}
+
+function deleteExpiredCurrent() {
+  const isReceived = !!window._viewingReceived;
+  const arr = isReceived ? receivedTickets : tickets;
+  const t = arr[currentTicket];
+  if (!t) return;
+  if (!confirm(`期限切れの「${t.title}」を削除しますか？`)) return;
+  if (isReceived) {
+    receivedTickets.splice(currentTicket, 1);
+    saveReceivedTickets();
+  } else {
+    const removed = tickets.splice(currentTicket, 1)[0];
+    if (removed) {
+      try { localStorage.removeItem(imgKey(removed)); } catch(e) {}
+    }
+    saveTickets();
+  }
+  goHome();
 }
 
 function useTicket() {
@@ -1851,12 +1884,21 @@ function openReceivedDetail(i) {
   const useBtn = document.getElementById('use-btn');
   if (useBtn) {
     const expired = getExpiryStatus(t.expiry).expired;
-    if (expired || remain <= 0) {
+    if (expired) {
+      useBtn.disabled = false; useBtn.style.opacity = '1'; useBtn.style.cursor = 'pointer';
+      useBtn.style.background = '#e24b4a'; useBtn.style.color = '#fff';
+      useBtn.textContent = '🗑 削除する';
+      useBtn.onclick = () => deleteExpiredCurrent();
+    } else if (remain <= 0) {
       useBtn.disabled = true; useBtn.style.opacity = '0.4'; useBtn.style.cursor = 'not-allowed';
-      useBtn.textContent = expired ? '期限切れ' : '使用済み';
+      useBtn.style.background = ''; useBtn.style.color = '';
+      useBtn.textContent = '使用済み';
+      useBtn.onclick = useTicket;
     } else {
       useBtn.disabled = false; useBtn.style.opacity = '1'; useBtn.style.cursor = 'pointer';
+      useBtn.style.background = ''; useBtn.style.color = '';
       useBtn.textContent = 'タップして使用';
+      useBtn.onclick = useTicket;
     }
   }
   showScreen('detail-screen');
@@ -2113,7 +2155,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = 'v3.2 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = 'v3.3 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     bar.style.background = color || '#888';
   }
 }
