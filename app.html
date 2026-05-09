@@ -106,7 +106,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v3.0 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v3.1 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -2113,7 +2113,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = 'v3.0 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = 'v3.1 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     bar.style.background = color || '#888';
   }
 }
@@ -2254,57 +2254,51 @@ function copyMyPeerId() {
 }
 
 // ============================================================
-// オフライン送受信 (ntfy.sh中継)
+// オフライン送受信 (Firebase Realtime Database)
 // ============================================================
-const NTFY_BASE = 'https://ntfy.sh';
-const NTFY_PREFIX = 'ticket-app-bb78a3-'; // 衝突回避用の独自プレフィックス
-function ntfyTopic(peerId) { return NTFY_PREFIX + peerId; }
+const FIREBASE_DB = 'https://ticket-app-bb78-default-rtdb.firebaseio.com';
+function inboxUrl(peerId) { return FIREBASE_DB + '/inbox/' + encodeURIComponent(peerId) + '.json'; }
+function inboxItemUrl(peerId, key) { return FIREBASE_DB + '/inbox/' + encodeURIComponent(peerId) + '/' + key + '.json'; }
 
-async function sendViaNtfy(recipientId, ticketCore, senderName, senderId) {
+async function sendViaFirebase(recipientId, ticket, senderName, senderId) {
   const payload = {
-    ticket: ticketCore,  // 画像は除いた軽量版を渡す
+    ticket: ticket,
     senderName: senderName || '',
     senderId: senderId || '',
     ts: Date.now()
   };
-  const body = JSON.stringify(payload);
-  // ntfy.shの本文上限は4KB。超えるなら画像を諦めて再試行
-  const resp = await fetch(NTFY_BASE + '/' + ntfyTopic(recipientId), {
+  const resp = await fetch(inboxUrl(recipientId), {
     method: 'POST',
-    headers: { 'Title': '新着チケット: ' + (ticketCore.title || '') },
-    body: body
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
   });
-  if (!resp.ok) throw new Error('ntfy ' + resp.status);
+  if (!resp.ok) throw new Error('firebase ' + resp.status);
   return true;
 }
 
 async function fetchOfflineTickets() {
   if (!myPeerId) return;
-  const lastCheck = parseInt(localStorage.getItem('ntfyLastCheck') || '0', 10);
-  // ntfyのsinceパラメータ: Unix秒 or "1h"等の相対時間
-  const sinceSec = lastCheck ? Math.floor(lastCheck / 1000) : Math.floor(Date.now() / 1000) - 43200;
   try {
-    const url = NTFY_BASE + '/' + ntfyTopic(myPeerId) + '/json?poll=1&since=' + sinceSec;
-    const resp = await fetch(url);
+    const resp = await fetch(inboxUrl(myPeerId));
     if (!resp.ok) return;
-    const text = await resp.text();
-    const lines = text.split('\n').filter(l => l.trim());
+    const data = await resp.json();
+    if (!data) return;
+    const keys = Object.keys(data);
     let processed = 0;
-    for (const line of lines) {
-      try {
-        const evt = JSON.parse(line);
-        if (evt.event !== 'message' || !evt.message) continue;
-        const data = JSON.parse(evt.message);
-        if (data && data.ticket) {
-          handleP2PTicket(data.ticket, data.senderName || '友達', data.senderId || '');
-          processed++;
-        }
-      } catch(e) { /* skip */ }
+    for (const key of keys) {
+      const msg = data[key];
+      if (msg && msg.ticket) {
+        handleP2PTicket(msg.ticket, msg.senderName || '友達', msg.senderId || '');
+        processed++;
+        // 受信完了したら削除
+        try {
+          await fetch(inboxItemUrl(myPeerId, key), { method: 'DELETE' });
+        } catch(e) {}
+      }
     }
-    localStorage.setItem('ntfyLastCheck', String(Date.now()));
-    if (processed > 0) console.log('[ntfy] processed', processed, 'offline tickets');
+    if (processed > 0) console.log('[firebase] processed', processed, 'offline tickets');
   } catch(e) {
-    console.error('[ntfy] fetch error', e);
+    console.error('[firebase] fetch error', e);
   }
 }
 
@@ -2380,17 +2374,14 @@ async function _sendTicketDirect() {
   console.log('[P2P] connecting to', recipientId, 'imgSize=', imgData ? imgData.length : 0);
   const conn = peer.connect(recipientId, { reliable: true });
 
-  // 送信失敗時にntfyへフォールバック
+  // 送信失敗時にFirebaseへフォールバック（画像付きでもOK）
   const tryOfflineSend = async (reason) => {
     try {
-      const core = {
-        title: ticket.title, desc: ticket.desc || '',
-        expiry: ticket.expiry || '', total: ticket.total, color: ticket.color,
-        creatorName: ticket.creatorName || myName,
-        creatorId: ticket.creatorId || myPeerId || ''
-      };
-      await sendViaNtfy(recipientId, core, myName, myPeerId || '');
-      finish(true, '相手はオフラインのため、メッセージを保存しました（12時間以内に開けば届きます。画像は省略）');
+      const fullTicket = Object.assign({}, ticket, { imgData });
+      if (!fullTicket.creatorName) fullTicket.creatorName = myName;
+      if (!fullTicket.creatorId) fullTicket.creatorId = myPeerId || '';
+      await sendViaFirebase(recipientId, fullTicket, myName, myPeerId || '');
+      finish(true, '相手はオフラインのため、サーバーに預けました。次回アプリを開いた時に届きます。');
     } catch(e) {
       finish(false, '送信失敗: ' + reason);
     }
