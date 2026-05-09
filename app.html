@@ -101,7 +101,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v1.9 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v2.0 接続中...</div>
 <!-- P2P受信通知バナー -->
 <div id="p2p-banner" style="display:none;position:fixed;top:30px;left:0;right:0;z-index:9999;background:#7F77DD;color:white;padding:14px 20px;font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,0.2);align-items:center;justify-content:space-between;">
   <span id="p2p-banner-text"></span>
@@ -246,6 +246,7 @@
         <div class="bt-content">
           <div class="bt-title" id="detail-title"></div>
           <div class="bt-sub" id="detail-desc"></div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.85);margin-bottom:4px" id="detail-creator"></div>
           <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:16px" id="detail-expiry"></div>
           <div class="qr-box" id="detail-qr-box"><canvas id="qr-canvas-detail" width="120" height="120" style="display:block;"></canvas></div><br>
           <button class="use-btn" id="use-btn" onclick="useTicket()">タップして使用</button>
@@ -1011,7 +1012,7 @@ function createTicket() {
   if (bgImgObj) confirmBgImage();
   confirmChars();
   const imgData = canvas.toDataURL();
-  tickets.unshift({ title, desc, expiry, total: newCount, used: 0, color: selectedColor, imgData });
+  tickets.unshift({ title, desc, expiry, total: newCount, used: 0, color: selectedColor, imgData, creatorName: (myName || '自分'), creatorId: myPeerId || '' });
   saveTickets();
   goHome();
 }
@@ -1023,6 +1024,7 @@ function openDetail(i) {
   const remain = t.total - t.used;
   document.getElementById('detail-title').textContent = t.title;
   document.getElementById('detail-desc').textContent = t.desc;
+  document.getElementById('detail-creator').textContent = formatCreator(t);
   const expiryStr = t.expiry ? '有効期限: ' + t.expiry : '有効期限: 無制限';
   document.getElementById('detail-expiry').textContent = expiryStr;
   document.getElementById('detail-color-overlay').style.background =
@@ -1124,7 +1126,8 @@ function openShare() {
   // QR用は画像なしの軽量データのみ
   const qrData = {
     title: t.title, desc: t.desc || '', expiry: t.expiry || '',
-    total: t.total, color: t.color
+    total: t.total, color: t.color,
+    creatorName: t.creatorName || '', creatorId: t.creatorId || ''
   };
   const qrEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(qrData))));
   const qrUrl = pageUrl + '?ticket=' + qrEncoded;
@@ -1662,6 +1665,7 @@ function openReceivedDetail(i) {
   const remain = t.total - (t.used || 0);
   document.getElementById('detail-title').textContent = t.title;
   document.getElementById('detail-desc').textContent = t.desc || '';
+  document.getElementById('detail-creator').textContent = formatCreator(t);
   document.getElementById('detail-expiry').textContent = t.expiry ? '有効期限: ' + t.expiry : '有効期限: 無制限';
   document.getElementById('detail-color-overlay').style.background =
     `linear-gradient(135deg,${COLOR_GRADS[t.color][0]},${COLOR_GRADS[t.color][1]})`;
@@ -1839,6 +1843,8 @@ function processReceivedData(raw) {
       total: data.total || 1, used: 0,
       color: data.color || 0,
       imgData: data.imgData || null,
+      creatorName: data.creatorName || '',
+      creatorId: data.creatorId || '',
       received: true
     };
     receivedTickets.unshift(newT);
@@ -1934,7 +1940,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = 'v1.9 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = 'v2.0 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     bar.style.background = color || '#888';
   }
 }
@@ -2001,6 +2007,15 @@ function updatePeerIdDisplay() {
   if (r) r.textContent = id;
 }
 
+function formatCreator(t) {
+  if (!t) return '';
+  const name = t.creatorName || '';
+  const id = t.creatorId || '';
+  if (!name && !id) return '';
+  if (name && id) return '作成: ' + name + ' (' + id + ')';
+  return '作成: ' + (name || id);
+}
+
 function handleP2PTicket(ticketData, senderName) {
   const exists = receivedTickets.some(t =>
     t.title === ticketData.title && t.color === ticketData.color && t.desc === ticketData.desc
@@ -2014,6 +2029,8 @@ function handleP2PTicket(ticketData, senderName) {
       used: 0,
       color: ticketData.color || 0,
       imgData: ticketData.imgData || null,
+      creatorName: ticketData.creatorName || senderName || '',
+      creatorId: ticketData.creatorId || '',
       received: true
     });
     saveReceivedTickets();
