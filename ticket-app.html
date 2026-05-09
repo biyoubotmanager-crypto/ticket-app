@@ -107,7 +107,7 @@
   .bt-title { font-size: 22px; font-weight: 700; color: white; margin-bottom: 4px; }
   .bt-sub { font-size: 14px; color: rgba(255,255,255,0.85); margin-bottom: 16px; }
   .qr-box { background: white; border-radius: 12px; padding: 10px; display: inline-block; margin-bottom: 12px; }
-  .use-btn { background: white; border: none; border-radius: 18px; padding: 15px 0; color: #B19CD9; font-size: 17px; font-weight: 700; cursor: pointer; width: 100%; display: block; margin-top: 8px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); transition: transform 0.15s; letter-spacing: 0.5px; }
+  .use-btn { background: linear-gradient(135deg, #FFB6C1 0%, #B19CD9 100%); border: none; border-radius: 18px; padding: 15px 0; color: #fff; font-size: 17px; font-weight: 700; cursor: pointer; width: 100%; display: block; box-shadow: 0 4px 14px rgba(177,156,217,0.35); transition: transform 0.15s; letter-spacing: 0.5px; }
   .use-btn:active { transform: scale(0.98); }
   .detail-actions { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
   .action-btn { border: 1.5px solid #f0e6ff; border-radius: 16px; padding: 13px; font-size: 14px; cursor: pointer; text-align: center; background: #fff; color: #5b4fb8; font-weight: 600; transition: transform 0.15s; }
@@ -151,7 +151,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v3.9 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v4.0 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -316,8 +316,7 @@
           <div class="bt-title" id="detail-title"></div>
           <div class="bt-sub" id="detail-desc"></div>
           <div style="font-size:11px;color:rgba(255,255,255,0.85);margin-bottom:4px" id="detail-creator"></div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:16px" id="detail-expiry"></div>
-          <button class="use-btn" id="use-btn" onclick="useTicket()">タップして使用</button>
+          <div style="font-size:12px;color:rgba(255,255,255,0.7);" id="detail-expiry"></div>
         </div>
         <div class="tear-overlay" id="tear-overlay">
           <div class="tear-top" id="tear-top"></div>
@@ -327,6 +326,7 @@
       </div>
       <div class="detail-actions">
         <div style="font-size:13px;color:#666;text-align:center;margin-bottom:4px" id="remain-info"></div>
+        <button class="use-btn" id="use-btn" onclick="useTicket()">タップして使用</button>
         <button class="action-btn primary" onclick="openShare()">友達に送る 🔗</button>
         <button class="action-btn" onclick="goHome()">ホームに戻る</button>
       </div>
@@ -2321,7 +2321,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v3.9 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v4.0 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
