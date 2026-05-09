@@ -106,7 +106,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v2.3 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v2.4 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -303,7 +303,8 @@
         <!-- アプリ内直接送信 -->
         <div style="border-top:1px solid #eee;padding-top:14px;margin-top:4px;">
           <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:4px;">📡 アプリで直接送る</div>
-          <div style="font-size:11px;color:#888;margin-bottom:10px;">相手の「受け取りID」を入力して送信</div>
+          <div id="share-friends-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;"></div>
+          <div style="font-size:11px;color:#888;margin-bottom:10px;">友達をタップ、または受け取りIDを入力</div>
           <div style="display:flex;gap:8px;">
             <input id="direct-peer-id-input" placeholder="相手の受け取りID" style="flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:10px;font-size:13px;color:#111;background:#fff;outline:none;" />
             <button id="direct-send-btn" onclick="sendTicketDirect()" style="background:#7F77DD;color:white;border:none;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">送信</button>
@@ -374,6 +375,7 @@
           <button onclick="copyMyPeerId()" style="background:#7F77DD;color:white;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">コピー</button>
         </div>
       </div>
+      <button onclick="openFriends()" style="border:1px solid #7F77DD;border-radius:12px;padding:14px;font-size:14px;cursor:pointer;background:#fff;color:#7F77DD;text-align:left;font-weight:600;">👥 友達を管理する</button>
       <button onclick="showResetConfirm()" style="border:1px solid #ffcccc;border-radius:12px;padding:14px;font-size:14px;cursor:pointer;background:#fff;color:#e24b4a;text-align:left;">🗑 データをリセットして最初から</button>
       <p style="font-size:11px;color:#aaa;line-height:1.6;padding:0 4px;">リセットすると作成済みのチケットと名前がすべて削除されます。</p>
 
@@ -386,6 +388,24 @@
           <button onclick="hideResetConfirm()" style="flex:1;background:none;border:1px solid #ddd;border-radius:10px;padding:12px;font-size:14px;cursor:pointer;color:#666;">キャンセル</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- 友達一覧画面 -->
+  <div class="screen" id="friends-screen">
+    <div class="top-bar">
+      <span class="back-btn" onclick="showScreen('settings-screen')">← 戻る</span>
+      <h1>友達</h1>
+      <span></span>
+    </div>
+    <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;">
+      <div style="background:#f8f8f8;border-radius:14px;padding:14px 16px;">
+        <div style="font-size:12px;color:#888;margin-bottom:8px;font-weight:600;">友達を追加</div>
+        <input id="friend-name-input" placeholder="友達の名前" maxlength="20" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:10px;font-size:13px;background:#fff;color:#111;margin-bottom:8px;outline:none;box-sizing:border-box;"/>
+        <input id="friend-id-input" placeholder="受け取りID（友達から教えてもらう）" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:10px;font-size:13px;background:#fff;color:#111;margin-bottom:8px;outline:none;box-sizing:border-box;"/>
+        <button onclick="onAddFriend()" style="width:100%;background:#7F77DD;color:white;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;">追加する</button>
+      </div>
+      <div id="friends-list-wrap"></div>
     </div>
   </div>
 
@@ -1157,6 +1177,7 @@ function openShare() {
 
   showScreen('share-screen');
   setTimeout(() => drawShareQR(qrUrl), 50);
+  renderShareFriendsList();
 }
 
 // ============================================================
@@ -1483,6 +1504,73 @@ function saveName() {
   }
 }
 
+function openFriends() {
+  document.getElementById('friend-name-input').value = '';
+  document.getElementById('friend-id-input').value = '';
+  renderFriendsList();
+  showScreen('friends-screen');
+}
+
+function renderFriendsList() {
+  const wrap = document.getElementById('friends-list-wrap');
+  if (!wrap) return;
+  if (friends.length === 0) {
+    wrap.innerHTML = '<div style="text-align:center;color:#aaa;font-size:13px;padding:30px 10px;">登録された友達はいません<br><span style="font-size:11px;">上のフォームから追加できます</span></div>';
+    return;
+  }
+  wrap.innerHTML = '<div style="font-size:12px;color:#888;margin-bottom:6px;font-weight:600;">登録済み（' + friends.length + '人）</div>';
+  friends.forEach((f, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'background:#fff;border:1px solid #eee;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;';
+    row.innerHTML = `
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:600;color:#111;">${f.name}</div>
+        <div style="font-size:11px;color:#7F77DD;word-break:break-all;">ID: ${f.peerId}</div>
+      </div>
+      <button data-i="${i}" style="background:#fff0f0;border:1px solid #ffcccc;color:#e24b4a;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;font-weight:600;">削除</button>
+    `;
+    row.querySelector('button').onclick = () => {
+      if (confirm(`「${f.name}」を友達から削除しますか？`)) {
+        removeFriend(f.peerId);
+        renderFriendsList();
+      }
+    };
+    wrap.appendChild(row);
+  });
+}
+
+function onAddFriend() {
+  const name = document.getElementById('friend-name-input').value.trim();
+  const id = document.getElementById('friend-id-input').value.trim();
+  if (!name) { showAlert('名前を入力してください'); return; }
+  if (!id) { showAlert('受け取りIDを入力してください'); return; }
+  if (id === myPeerId) { showAlert('自分のIDは登録できません'); return; }
+  addFriend(name, id);
+  document.getElementById('friend-name-input').value = '';
+  document.getElementById('friend-id-input').value = '';
+  renderFriendsList();
+  showAlert(`「${name}」を友達に追加しました`);
+}
+
+function renderShareFriendsList() {
+  const wrap = document.getElementById('share-friends-list');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  if (friends.length === 0) return;
+  friends.forEach(f => {
+    const b = document.createElement('button');
+    b.textContent = f.name;
+    b.style.cssText = 'background:#f0eeff;color:#7F77DD;border:1px solid #d4cfff;border-radius:20px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;';
+    b.onclick = () => {
+      const input = document.getElementById('direct-peer-id-input');
+      if (input) input.value = f.peerId;
+      // タップで即送信
+      sendTicketDirect();
+    };
+    wrap.appendChild(b);
+  });
+}
+
 function dismissSwipeGuide() {
   const g = document.getElementById('swipe-guide');
   if (g) g.style.display = 'none';
@@ -1606,6 +1694,32 @@ if (charBtnRow) {
 // チケット受け取り機能（URL + QRカメラ読み取り）
 // ============================================================
 let receivedTickets = [];
+let friends = [];
+
+function loadFriends() {
+  try {
+    const raw = localStorage.getItem('friends');
+    friends = raw ? JSON.parse(raw) : [];
+  } catch(e) { friends = []; }
+}
+function saveFriends() {
+  try { localStorage.setItem('friends', JSON.stringify(friends)); } catch(e) {}
+}
+function addFriend(name, peerId) {
+  name = (name || '').trim();
+  peerId = (peerId || '').trim();
+  if (!name || !peerId) return false;
+  // 重複IDは更新
+  const idx = friends.findIndex(f => f.peerId === peerId);
+  if (idx >= 0) { friends[idx].name = name; }
+  else { friends.unshift({ name, peerId }); }
+  saveFriends();
+  return true;
+}
+function removeFriend(peerId) {
+  friends = friends.filter(f => f.peerId !== peerId);
+  saveFriends();
+}
 let qrStream = null;
 let qrScanning = false;
 let qrAnimId = null;
@@ -1995,7 +2109,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = 'v2.3 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = 'v2.4 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     bar.style.background = color || '#888';
   }
 }
@@ -2092,6 +2206,15 @@ function handleP2PTicket(ticketData, senderName, senderId) {
     renderReceivedTickets();
   }
   showP2PBanner('🎟 ' + senderName + 'から「' + ticketData.title + '」を受け取りました！');
+  // 送り主が友達未登録なら登録を提案
+  if (senderId && !friends.some(f => f.peerId === senderId)) {
+    setTimeout(() => {
+      if (confirm(`「${senderName}」(${senderId}) を友達に追加しますか？`)) {
+        addFriend(senderName, senderId);
+        showAlert(`「${senderName}」を友達に追加しました`);
+      }
+    }, 1500);
+  }
 }
 
 function showP2PBanner(msg) {
@@ -2234,6 +2357,7 @@ async function _sendTicketDirect() {
 
 loadTickets();
 loadReceivedTickets();
+loadFriends();
 loadName();
 checkUrlTicket();
 renderTicketList();
