@@ -152,7 +152,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v4.3 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v4.4 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -1578,7 +1578,6 @@ function renderTicketList() {
   const activeIndices = tickets.map((t,i)=>({t,i})).filter(x => !isTrashedTicket(x.t));
   if (activeIndices.length === 0) {
     list.innerHTML = '<div class="empty">有効なチケットがありません<br>+ ボタンで作成しましょう</div>';
-    document.getElementById('home-count').textContent = tickets.length + '枚';
     return;
   }
   activeIndices.forEach(({t, i}) => {
@@ -1648,7 +1647,6 @@ function renderTicketList() {
     wrap.appendChild(div);
     list.appendChild(wrap);
   });
-  document.getElementById('home-count').textContent = tickets.length + '枚';
 }
 
 function openCreate() {
@@ -2360,7 +2358,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v4.3 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v4.4 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
