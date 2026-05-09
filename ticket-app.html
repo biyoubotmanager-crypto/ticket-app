@@ -106,7 +106,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v3.3 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v3.4 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -152,6 +152,7 @@
     <div class="tab-bar">
       <div class="tab active" onclick="switchTab('received',this)">受け取り</div>
       <div class="tab" onclick="switchTab('mine',this)">作成済み</div>
+      <div class="tab" onclick="switchTab('trash',this)">🗑</div>
     </div>
     <div class="ticket-grid" id="ticket-list"></div>
     <button class="fab" onclick="openCreate()">+</button>
@@ -1291,16 +1292,107 @@ function switchTab(tab, el) {
   if (el) el.classList.add('active');
   const fab = document.querySelector('.fab');
   const list = document.getElementById('ticket-list');
-  // スクロール位置リセット
   if (list) list.scrollTop = 0;
   window.scrollTo(0, 0);
   if (tab === 'received') {
     if (fab) fab.style.display = 'none';
     renderReceivedTickets();
+  } else if (tab === 'trash') {
+    if (fab) fab.style.display = 'none';
+    renderTrashTickets();
   } else {
     if (fab) fab.style.display = '';
     renderTicketList();
   }
+}
+
+function renderTrashTickets() {
+  const list = document.getElementById('ticket-list');
+  if (!list) return;
+  list.innerHTML = '';
+  const items = [];
+  tickets.forEach((t, i) => { if (isTrashedTicket(t)) items.push({ t, i, kind: 'mine' }); });
+  receivedTickets.forEach((t, i) => { if (isTrashedTicket(t)) items.push({ t, i, kind: 'received' }); });
+
+  // 一括削除ボタン
+  if (items.length > 0) {
+    const head = document.createElement('div');
+    head.style.cssText = 'padding:12px 20px 0;display:flex;justify-content:space-between;align-items:center;';
+    head.innerHTML = '<div style="font-size:12px;color:#888;">' + items.length + '件のチケット</div>';
+    const allDel = document.createElement('button');
+    allDel.textContent = 'すべて削除';
+    allDel.style.cssText = 'background:#fff0f0;border:1px solid #ffcccc;color:#e24b4a;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:600;';
+    allDel.onclick = () => {
+      if (!confirm('ゴミ箱の' + items.length + '件をすべて削除しますか？')) return;
+      // 後ろから削除（インデックスがずれないように）
+      const minesToDel = items.filter(x => x.kind === 'mine').sort((a,b)=>b.i-a.i);
+      const recsToDel = items.filter(x => x.kind === 'received').sort((a,b)=>b.i-a.i);
+      minesToDel.forEach(x => {
+        const removed = tickets.splice(x.i, 1)[0];
+        if (removed) { try { localStorage.removeItem(imgKey(removed)); } catch(e) {} }
+      });
+      recsToDel.forEach(x => receivedTickets.splice(x.i, 1));
+      saveTickets();
+      saveReceivedTickets();
+      renderTrashTickets();
+    };
+    head.appendChild(allDel);
+    list.appendChild(head);
+  }
+
+  if (items.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.innerHTML = '🗑<br>ゴミ箱は空です<br><span style="font-size:12px;color:#aaa;">期限切れ・使用済みチケットがここに集まります</span>';
+    list.appendChild(empty);
+    return;
+  }
+
+  items.forEach(({ t, i, kind }) => {
+    const remain = t.total - (t.used || 0);
+    const expired = getExpiryStatus(t.expiry).expired;
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'margin:10px 20px;border-radius:14px;overflow:hidden;background:linear-gradient(135deg,' + COLOR_GRADS[t.color][0] + ',' + COLOR_GRADS[t.color][1] + ');filter:grayscale(0.5);opacity:0.7;position:relative;';
+    const inner = document.createElement('div');
+    inner.style.cssText = 'padding:12px 14px;color:#fff;cursor:pointer;';
+    const reason = expired ? '期限切れ' : '使用済';
+    const kindLabel = kind === 'received' ? '受取' : '自作';
+    inner.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+        '<div style="font-size:14px;font-weight:700;">' + t.title + '</div>' +
+        '<span style="background:rgba(0,0,0,0.3);font-size:10px;padding:2px 8px;border-radius:10px;">' + reason + ' / ' + kindLabel + '</span>' +
+      '</div>' +
+      '<div style="font-size:11px;opacity:0.85;">' + (t.desc || '') + '</div>';
+    inner.onclick = () => {
+      if (kind === 'received') openReceivedDetail(i);
+      else openDetail(i);
+    };
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '削除';
+    delBtn.style.cssText = 'position:absolute;right:10px;bottom:10px;background:#e24b4a;color:#fff;border:none;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;';
+    delBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (!confirm('「' + t.title + '」を削除しますか？')) return;
+      if (kind === 'received') {
+        receivedTickets.splice(i, 1);
+        saveReceivedTickets();
+      } else {
+        const removed = tickets.splice(i, 1)[0];
+        if (removed) { try { localStorage.removeItem(imgKey(removed)); } catch(e) {} }
+        saveTickets();
+      }
+      renderTrashTickets();
+    };
+    wrap.appendChild(inner);
+    wrap.appendChild(delBtn);
+    list.appendChild(wrap);
+  });
+}
+
+function isTrashedTicket(t) {
+  const remain = t.total - (t.used || 0);
+  const expired = getExpiryStatus(t.expiry).expired;
+  return expired || remain <= 0;
 }
 
 
@@ -1390,12 +1482,14 @@ function confirmDelete() {
 function renderTicketList() {
   const list = document.getElementById('ticket-list');
   list.innerHTML = '';
-  if (tickets.length === 0) {
-    list.innerHTML = '<div class="empty">チケットがありません<br>+ ボタンで作成しましょう</div>';
-    document.getElementById('home-count').textContent = '0枚';
+  // 期限切れ・使用済みはゴミ箱タブへ
+  const activeIndices = tickets.map((t,i)=>({t,i})).filter(x => !isTrashedTicket(x.t));
+  if (activeIndices.length === 0) {
+    list.innerHTML = '<div class="empty">有効なチケットがありません<br>+ ボタンで作成しましょう</div>';
+    document.getElementById('home-count').textContent = tickets.length + '枚';
     return;
   }
-  tickets.forEach((t, i) => {
+  activeIndices.forEach(({t, i}) => {
     const remain = t.total - t.used;
     const status = getExpiryStatus(t.expiry);
     const isExpired = status.expired;
@@ -1478,16 +1572,19 @@ function openCreate() {
 }
 
 function goHome() {
-  // 直前に開いていたタブを維持（タブ順: [0]受け取り, [1]作成済み）
+  // 直前に開いていたタブを維持（タブ順: [0]受け取り, [1]作成済み, [2]ゴミ箱）
   const tabs = document.querySelectorAll('.tab');
-  if (_currentTab === 'received') {
+  const fab = document.querySelector('.fab');
+  if (_currentTab === 'trash') {
+    tabs.forEach((t, i) => t.classList.toggle('active', i === 2));
+    if (fab) fab.style.display = 'none';
+    renderTrashTickets();
+  } else if (_currentTab === 'received') {
     tabs.forEach((t, i) => t.classList.toggle('active', i === 0));
-    const fab = document.querySelector('.fab');
     if (fab) fab.style.display = 'none';
     renderReceivedTickets();
   } else {
     tabs.forEach((t, i) => t.classList.toggle('active', i === 1));
-    const fab = document.querySelector('.fab');
     if (fab) fab.style.display = '';
     renderTicketList();
   }
@@ -1792,7 +1889,8 @@ function renderReceivedTickets() {
   `;
   list.appendChild(btnDiv);
 
-  if (receivedTickets.length === 0) {
+  const activeReceived = receivedTickets.map((t,i)=>({t,i})).filter(x => !isTrashedTicket(x.t));
+  if (activeReceived.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'empty';
     empty.innerHTML = '📬<br>受け取ったチケットはまだありません<br><span style="font-size:12px;color:#aaa;">上のボタンから受け取ってみましょう</span>';
@@ -1800,7 +1898,7 @@ function renderReceivedTickets() {
     return;
   }
 
-  receivedTickets.forEach((t, i) => {
+  activeReceived.forEach(({t, i}) => {
     const remain = t.total - (t.used || 0);
     const status = getExpiryStatus(t.expiry);
     const isExpired = status.expired;
@@ -2155,7 +2253,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = 'v3.3 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = 'v3.4 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     bar.style.background = color || '#888';
   }
 }
@@ -2474,12 +2572,16 @@ loadReceivedTickets();
 loadFriends();
 loadName();
 checkUrlTicket();
-// 前回のタブ状態を復元（タブ順: [0]受け取り, [1]作成済み）
+// 前回のタブ状態を復元（タブ順: [0]受け取り, [1]作成済み, [2]ゴミ箱）
 (function restoreTab(){
   const tabs = document.querySelectorAll('.tab');
-  if (_currentTab === 'received') {
+  const fab = document.querySelector('.fab');
+  if (_currentTab === 'trash') {
+    tabs.forEach((t, i) => t.classList.toggle('active', i === 2));
+    if (fab) fab.style.display = 'none';
+    renderTrashTickets();
+  } else if (_currentTab === 'received') {
     tabs.forEach((t, i) => t.classList.toggle('active', i === 0));
-    const fab = document.querySelector('.fab');
     if (fab) fab.style.display = 'none';
     renderReceivedTickets();
   } else {
