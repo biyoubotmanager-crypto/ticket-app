@@ -151,7 +151,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v3.5 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v3.6 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -317,7 +317,6 @@
           <div class="bt-sub" id="detail-desc"></div>
           <div style="font-size:11px;color:rgba(255,255,255,0.85);margin-bottom:4px" id="detail-creator"></div>
           <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:16px" id="detail-expiry"></div>
-          <div class="qr-box" id="detail-qr-box"><canvas id="qr-canvas-detail" width="120" height="120" style="display:block;"></canvas></div><br>
           <button class="use-btn" id="use-btn" onclick="useTicket()">タップして使用</button>
         </div>
         <div class="tear-overlay" id="tear-overlay">
@@ -345,9 +344,8 @@
       <div class="share-modal">
         <h2 id="share-title" style="margin-bottom:4px"></h2>
         <p id="share-sub" style="font-size:13px;color:#666;margin-bottom:16px"></p>
-        <div class="share-qr-wrap"><svg id="share-qr" width="160" height="160" viewBox="0 0 160 160"></svg></div>
         <!-- アプリ内直接送信 -->
-        <div style="border-top:1px solid #eee;padding-top:14px;margin-top:4px;">
+        <div style="padding-top:4px;margin-top:4px;">
           <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:4px;">📡 アプリで直接送る</div>
           <div id="share-friends-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;"></div>
           <div style="font-size:11px;color:#888;margin-bottom:10px;">友達をタップ、または受け取りIDを入力</div>
@@ -1130,7 +1128,7 @@ function openDetail(i) {
       bgImg.style.display = 'none';
     }
   }
-  drawQR();
+  // drawQR(); // チケットQRは削除
   // use-btnを毎回リセット
   const useBtn = document.getElementById('use-btn');
   if (useBtn) {
@@ -1255,7 +1253,6 @@ function openShare() {
   const qrUrl = pageUrl + '?ticket=' + qrEncoded;
 
   showScreen('share-screen');
-  setTimeout(() => drawShareQR(qrUrl), 50);
   renderShareFriendsList();
 }
 
@@ -1299,6 +1296,15 @@ function renderQRToCanvas(canvas, text, size) {
     ctx.fillStyle = '#e24b4a'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText('QRエラー', size/2, size/2);
   }
+}
+
+function drawMyIdQR() {
+  const canvas = document.getElementById('my-id-qr');
+  if (!canvas) return;
+  const id = myPeerId || localStorage.getItem('peerId') || '';
+  if (!id) return;
+  // 「TICKETID:〜」プレフィックスでID用QRと判別
+  renderQRToCanvas(canvas, 'TICKETID:' + id, 140);
 }
 
 function drawQR() {
@@ -1923,16 +1929,19 @@ function renderReceivedTickets() {
   btnDiv.style.cssText = 'padding:12px 20px 4px;display:flex;flex-direction:column;gap:8px;';
   const peerId = myPeerId || localStorage.getItem('peerId') || '接続中...';
   btnDiv.innerHTML = `
-    <button onclick="openReceiveCamera()" style="width:100%;background:#7F77DD;color:white;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(127,119,221,0.3);">📷 QRコードを読み取る</button>
-    <div style="background:#f0eeff;border-radius:12px;padding:12px 16px;">
-      <div style="font-size:11px;color:#888;margin-bottom:4px;">受け取りID（送り主にこのIDを教えてください）</div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div style="font-size:13px;font-weight:600;color:#7F77DD;flex:1;word-break:break-all;" id="received-tab-peer-id">${peerId}</div>
-        <button onclick="copyMyPeerId()" style="background:#7F77DD;color:white;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">コピー</button>
+    <button onclick="openReceiveCamera()" style="width:100%;background:linear-gradient(135deg,#FFB6C1,#B19CD9);color:white;border:none;border-radius:18px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(177,156,217,0.35);letter-spacing:0.5px;">📷 友達のQRを読み取る</button>
+    <div style="background:linear-gradient(135deg,#FFE5F1,#E8E2FF);border-radius:18px;padding:14px 16px;text-align:center;">
+      <div style="font-size:11px;color:#9b8bcc;margin-bottom:8px;font-weight:600;">✨ あなたの受け取りQR ✨</div>
+      <div style="background:#fff;border-radius:14px;padding:10px;display:inline-block;margin-bottom:8px;"><canvas id="my-id-qr" width="140" height="140" style="display:block;"></canvas></div>
+      <div style="font-size:12px;color:#5b4fb8;margin-bottom:4px;">送り主にQRをスキャンしてもらう、またはIDを伝えてください</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+        <div style="font-size:12px;font-weight:600;color:#7F77DD;flex:1;word-break:break-all;background:rgba(255,255,255,0.7);padding:6px 10px;border-radius:10px;" id="received-tab-peer-id">${peerId}</div>
+        <button onclick="copyMyPeerId()" style="background:linear-gradient(135deg,#FFB6C1,#B19CD9);color:white;border:none;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">コピー</button>
       </div>
     </div>
   `;
   list.appendChild(btnDiv);
+  setTimeout(() => drawMyIdQR(), 30);
 
   const activeReceived = receivedTickets.map((t,i)=>({t,i})).filter(x => !isTrashedTicket(x.t));
   if (activeReceived.length === 0) {
@@ -2045,7 +2054,6 @@ function openReceivedDetail(i) {
     }
   }
   showScreen('detail-screen');
-  setTimeout(() => drawQR(), 50);
 }
 
 function openReceive() {
@@ -2170,8 +2178,32 @@ function scanQR() {
 
 function handleScannedData(data) {
   stopCamera();
-  document.getElementById('camera-status').textContent = '読み取り成功！処理中...';
+  document.getElementById('camera-status').textContent = '読み取り成功！';
+  // IDプレフィックスがあれば友達追加フロー
+  if (typeof data === 'string' && data.startsWith('TICKETID:')) {
+    const peerId = data.slice('TICKETID:'.length).trim();
+    handleScannedFriendId(peerId);
+    return;
+  }
+  // 旧式のチケットURLも互換のため残す
   processReceivedData(data);
+}
+
+function handleScannedFriendId(peerId) {
+  if (!peerId) { showReceiveError('IDが空です'); return; }
+  if (peerId === myPeerId) { showReceiveError('自分自身のQRです'); return; }
+  const existing = friends.find(f => f.peerId === peerId);
+  if (existing) {
+    showReceiveMessage('info', `「${existing.name}」(${peerId}) はすでに友達登録済みです`);
+    return;
+  }
+  const name = prompt(`友達に追加します。\nID: ${peerId}\n表示名を入力してください`, '');
+  if (name === null) { closeReceive(); return; }
+  const trimmed = (name || '').trim();
+  if (!trimmed) { showReceiveError('名前を入力してください'); return; }
+  addFriend(trimmed, peerId);
+  closeReceive();
+  showAlert(`「${trimmed}」を友達に追加しました ✨`);
 }
 
 function receiveFromUrl() {
@@ -2298,7 +2330,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v3.5 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v3.6 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
