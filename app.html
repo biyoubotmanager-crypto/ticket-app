@@ -85,6 +85,11 @@
   .copy-btn.copied { background: #1D9E75; }
   .close-share-btn { width: 100%; background: none; border: 1px solid #ddd; border-radius: 12px; padding: 12px; font-size: 14px; cursor: pointer; color: #111; }
   .empty { text-align: center; padding: 48px 20px; color: #aaa; font-size: 14px; }
+  @keyframes swipeDemo {
+    0%, 15%   { transform: translateX(0); }
+    50%, 75%  { transform: translateX(-80px); }
+    95%, 100% { transform: translateX(0); }
+  }
   @keyframes pulseBadge {
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.6; transform: scale(0.8); }
@@ -101,7 +106,25 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v2.2 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v2.3 接続中...</div>
+<!-- 初回ガイド: スワイプ削除 -->
+<div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
+  <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
+    <div style="font-size:38px;margin-bottom:6px;">👈</div>
+    <h2 style="font-size:18px;font-weight:700;color:#111;margin-bottom:10px;">スワイプで削除できます</h2>
+    <p style="font-size:13px;color:#666;line-height:1.7;margin-bottom:18px;">チケットを<strong style="color:#7F77DD;">左にスワイプ</strong>すると削除ボタンが出ます。<br>不要なチケットはここから消せます。</p>
+    <!-- アニメーションのデモカード -->
+    <div style="position:relative;height:74px;overflow:hidden;border-radius:12px;background:#f2f2f5;margin-bottom:18px;">
+      <div style="position:absolute;top:0;right:0;bottom:0;width:80px;background:#e24b4a;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-weight:700;">×</div>
+      <div id="swipe-guide-card" style="position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#7F77DD,#A89DFF);border-radius:12px;padding:14px 16px;color:#fff;font-weight:600;animation:swipeDemo 2.4s ease-in-out infinite;">
+        <div style="font-size:13px;">サンプルチケット</div>
+        <div style="font-size:10px;opacity:0.85;margin-top:4px;">← 左にスワイプしてみよう</div>
+      </div>
+    </div>
+    <button onclick="dismissSwipeGuide()" style="width:100%;background:#7F77DD;color:white;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;">わかった</button>
+  </div>
+</div>
+
 <!-- P2P受信通知バナー -->
 <div id="p2p-banner" style="display:none;position:fixed;top:30px;left:0;right:0;z-index:9999;background:#7F77DD;color:white;padding:14px 20px;font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,0.2);align-items:center;justify-content:space-between;">
   <span id="p2p-banner-text"></span>
@@ -1451,6 +1474,19 @@ function saveName() {
   localStorage.setItem('myName', name);
   document.getElementById('name-modal').style.display = 'none';
   updateHomeTitle();
+  // 初回起動時のみスワイプ削除ガイドを表示
+  if (!localStorage.getItem('swipeGuideShown')) {
+    setTimeout(() => {
+      const g = document.getElementById('swipe-guide');
+      if (g) g.style.display = 'flex';
+    }, 400);
+  }
+}
+
+function dismissSwipeGuide() {
+  const g = document.getElementById('swipe-guide');
+  if (g) g.style.display = 'none';
+  localStorage.setItem('swipeGuideShown', '1');
 }
 
 function loadName() {
@@ -1959,7 +1995,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = 'v2.2 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = 'v2.3 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     bar.style.background = color || '#888';
   }
 }
