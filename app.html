@@ -79,15 +79,16 @@
   }
   .submit-btn:active { transform: scale(0.97); }
   .img-section { border: 1px solid #e0e0e0; border-radius: 14px; overflow: hidden; }
-  .canvas-wrap { width: 100%; height: 130px; background: #f5f5f5; position: relative; }
-  .draw-canvas { touch-action: none; display: block; width: 100%; height: 130px; }
+  .canvas-wrap { width: 100%; aspect-ratio: 340 / 130; background: #fff; position: relative; }
+  .draw-canvas { touch-action: none; display: block; width: 100%; height: 100%; }
   .img-tools { display: flex; border-top: 1px solid #e0e0e0; }
   .img-tool-btn { flex: 1; padding: 8px 2px; font-size: 11px; color: #666; cursor: pointer; text-align: center; border: none; background: none; border-right: 1px solid #e0e0e0; }
   .img-tool-btn:last-child { border-right: none; }
   .img-tool-btn.active { color: #7F77DD; font-weight: 600; background: #f5f4ff; }
   .brush-row { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-top: 1px solid #e0e0e0; flex-wrap: wrap; }
-  .brush-color { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
-  .brush-color.selected { border-color: #111; }
+  .brush-color { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2.5px solid transparent; transition: transform 0.15s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+  .brush-color:active { transform: scale(0.9); }
+  .brush-color.selected { border-color: #5b4fb8; transform: scale(1.15); }
   .sticker-row { display: flex; gap: 6px; flex-wrap: wrap; padding: 8px 12px; border-top: 1px solid #e0e0e0; }
   .sticker { font-size: 22px; cursor: pointer; padding: 4px; border-radius: 8px; }
   .sticker:hover { background: #f0f0f0; }
@@ -151,7 +152,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v4.1 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v4.2 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -268,7 +269,8 @@
             <div class="brush-color" style="background:#378ADD" onclick="setBrushColor('#378ADD',this)"></div>
             <div class="brush-color" style="background:#E24B4A" onclick="setBrushColor('#E24B4A',this)"></div>
             <div class="brush-color" style="background:#fff;border:1px solid #ccc" onclick="setBrushColor('#ffffff',this)"></div>
-            <div style="font-size:12px;color:#666;display:flex;align-items:center;gap:6px">太さ<input type="range" min="2" max="20" value="5" step="1" style="width:56px" oninput="brushSize=+this.value"/></div>
+            <div style="font-size:12px;color:#666;display:flex;align-items:center;gap:6px">太さ<input type="range" min="2" max="20" value="6" step="1" style="width:60px" oninput="brushSize=+this.value"/></div>
+            <button onclick="undoStroke()" id="undo-btn" style="font-size:12px;padding:6px 10px;border:1.5px solid #f0e6ff;border-radius:10px;background:#fff;color:#5b4fb8;cursor:pointer;font-weight:600;">↶ 戻す</button>
           </div>
           <div id="sticker-panel" style="display:none">
             <div style="padding:8px 12px;border-top:1px solid #e0e0e0;">
@@ -533,7 +535,25 @@ let selectedColor = 0;
 // ============================================================
 const canvas = document.getElementById('draw-canvas');
 const ctx = canvas.getContext('2d');
-let brushColor = '#7F77DD', brushSize = 5, drawing = false, lastX = 0, lastY = 0, currentTool = 'draw';
+let brushColor = '#7F77DD', brushSize = 6, drawing = false, lastX = 0, lastY = 0, currentTool = 'draw';
+let drawHistory = []; // Undo用スナップショット
+const HISTORY_MAX = 20;
+function pushHistory() {
+  try {
+    drawHistory.push(canvas.toDataURL());
+    if (drawHistory.length > HISTORY_MAX) drawHistory.shift();
+  } catch(e) {}
+}
+function undoStroke() {
+  if (drawHistory.length === 0) return;
+  const data = drawHistory.pop();
+  const img = new Image();
+  img.onload = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  };
+  img.src = data;
+}
 
 function getPos(e, c) {
   const r = c.getBoundingClientRect(), sx = c.width / r.width, sy = c.height / r.height;
@@ -541,32 +561,47 @@ function getPos(e, c) {
   return [(s.clientX - r.left) * sx, (s.clientY - r.top) * sy];
 }
 
-canvas.addEventListener('mousedown', e => { if (currentTool !== 'draw') return; drawing = true; [lastX, lastY] = getPos(e, canvas); });
-canvas.addEventListener('mousemove', e => {
-  if (!drawing || currentTool !== 'draw') return;
-  const [x, y] = getPos(e, canvas);
-  ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y);
-  ctx.strokeStyle = brushColor; ctx.lineWidth = brushSize; ctx.lineCap = 'round'; ctx.stroke();
-  [lastX, lastY] = [x, y];
-});
-canvas.addEventListener('mouseup', () => drawing = false);
-canvas.addEventListener('mouseleave', () => drawing = false);
+function strokeStart(x, y) {
+  pushHistory();
+  drawing = true;
+  lastX = x; lastY = y;
+  // 点をひとつ打つ（ワンタップ用）
+  ctx.beginPath(); ctx.fillStyle = brushColor;
+  ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2); ctx.fill();
+}
+function strokeMove(x, y) {
+  if (!drawing) return;
+  // 中点を使った滑らかな曲線
+  const mx = (lastX + x) / 2, my = (lastY + y) / 2;
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.quadraticCurveTo(lastX, lastY, mx, my);
+  ctx.strokeStyle = brushColor;
+  ctx.lineWidth = brushSize;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  lastX = x; lastY = y;
+}
+function strokeEnd() { drawing = false; }
+
+canvas.addEventListener('mousedown', e => { if (currentTool !== 'draw') return; const [x,y]=getPos(e,canvas); strokeStart(x,y); });
+canvas.addEventListener('mousemove', e => { if (!drawing || currentTool !== 'draw') return; const [x,y]=getPos(e,canvas); strokeMove(x,y); });
+canvas.addEventListener('mouseup', strokeEnd);
+canvas.addEventListener('mouseleave', strokeEnd);
 canvas.addEventListener('touchstart', e => {
-  if (bgMode) return; // bgModeのtouchstartに任せる
+  if (bgMode) return;
   e.preventDefault();
   if (currentTool !== 'draw') return;
-  drawing = true; [lastX, lastY] = getPos(e, canvas);
+  const [x,y]=getPos(e,canvas); strokeStart(x,y);
 }, { passive: false });
 canvas.addEventListener('touchmove', e => {
   if (bgMode) return;
   e.preventDefault();
   if (!drawing || currentTool !== 'draw') return;
-  const [x, y] = getPos(e, canvas);
-  ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y);
-  ctx.strokeStyle = brushColor; ctx.lineWidth = brushSize; ctx.lineCap = 'round'; ctx.stroke();
-  [lastX, lastY] = [x, y];
+  const [x,y]=getPos(e,canvas); strokeMove(x,y);
 }, { passive: false });
-canvas.addEventListener('touchend', () => { if (!bgMode) drawing = false; });
+canvas.addEventListener('touchend', () => { if (!bgMode) strokeEnd(); });
 
 function setTool(t) {
   currentTool = t;
@@ -747,8 +782,11 @@ function cancelBgImage() {
 }
 
 function clearCanvas() {
+  pushHistory();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  placedChars = []; selectedChar = null;   document.getElementById('ai-status').textContent = '';
+  placedChars = []; selectedChar = null;
+  const aiSt = document.getElementById('ai-status');
+  if (aiSt) aiSt.textContent = '';
 }
 
 function placeSticker(e) {
@@ -1620,6 +1658,7 @@ function openCreate() {
   document.getElementById('new-desc').value = '';
   document.getElementById('new-expiry').value = '';
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawHistory = [];
   document.querySelectorAll('.color-dot').forEach((d, i) => d.classList.toggle('selected', i === 0));
   setTool('draw');
   showScreen('create-screen');
@@ -2321,7 +2360,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v4.1 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v4.2 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
