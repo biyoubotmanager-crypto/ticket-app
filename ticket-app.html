@@ -100,8 +100,10 @@
 </style>
 </head>
 <body>
+<!-- 接続状態バー（最上部・常時表示） -->
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v2.1 接続中...</div>
 <!-- P2P受信通知バナー -->
-<div id="p2p-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#7F77DD;color:white;padding:14px 20px;font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,0.2);display:none;align-items:center;justify-content:space-between;">
+<div id="p2p-banner" style="display:none;position:fixed;top:30px;left:0;right:0;z-index:9999;background:#7F77DD;color:white;padding:14px 20px;font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,0.2);align-items:center;justify-content:space-between;">
   <span id="p2p-banner-text"></span>
   <span onclick="dismissP2PBanner()" style="cursor:pointer;opacity:0.8;padding-left:12px;">✕</span>
 </div>
@@ -121,7 +123,7 @@
   <!-- ホーム画面 -->
   <div class="screen active" id="home-screen">
     <div class="top-bar">
-      <h1 id="home-title">🎟 チケット <span id="conn-status" style="font-size:10px;font-weight:normal;color:#aaa;">●接続中</span></h1>
+      <h1 id="home-title">🎟 チケット</h1>
       <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:13px;color:#888" id="home-count">3枚</span><button onclick="openSettings()" style="background:none;border:none;font-size:18px;cursor:pointer;padding:2px;color:#888;">⚙️</button></div>
     </div>
     <div class="tab-bar">
@@ -244,6 +246,7 @@
         <div class="bt-content">
           <div class="bt-title" id="detail-title"></div>
           <div class="bt-sub" id="detail-desc"></div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.85);margin-bottom:4px" id="detail-creator"></div>
           <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:16px" id="detail-expiry"></div>
           <div class="qr-box" id="detail-qr-box"><canvas id="qr-canvas-detail" width="120" height="120" style="display:block;"></canvas></div><br>
           <button class="use-btn" id="use-btn" onclick="useTicket()">タップして使用</button>
@@ -1009,7 +1012,7 @@ function createTicket() {
   if (bgImgObj) confirmBgImage();
   confirmChars();
   const imgData = canvas.toDataURL();
-  tickets.unshift({ title, desc, expiry, total: newCount, used: 0, color: selectedColor, imgData });
+  tickets.unshift({ title, desc, expiry, total: newCount, used: 0, color: selectedColor, imgData, creatorName: (myName || '自分'), creatorId: myPeerId || '' });
   saveTickets();
   goHome();
 }
@@ -1021,6 +1024,7 @@ function openDetail(i) {
   const remain = t.total - t.used;
   document.getElementById('detail-title').textContent = t.title;
   document.getElementById('detail-desc').textContent = t.desc;
+  document.getElementById('detail-creator').textContent = formatCreator(t);
   const expiryStr = t.expiry ? '有効期限: ' + t.expiry : '有効期限: 無制限';
   document.getElementById('detail-expiry').textContent = expiryStr;
   document.getElementById('detail-color-overlay').style.background =
@@ -1122,7 +1126,8 @@ function openShare() {
   // QR用は画像なしの軽量データのみ
   const qrData = {
     title: t.title, desc: t.desc || '', expiry: t.expiry || '',
-    total: t.total, color: t.color
+    total: t.total, color: t.color,
+    creatorName: t.creatorName || '', creatorId: t.creatorId || ''
   };
   const qrEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(qrData))));
   const qrUrl = pageUrl + '?ticket=' + qrEncoded;
@@ -1199,10 +1204,18 @@ function drawShareQR(url) {
 }
 
 
+let _currentTab = 'mine';
 function switchTab(tab, el) {
+  // 同じタブの連打は無視（再描画で表示が消えるのを防ぐ）
+  if (tab === _currentTab && el && el.classList.contains('active')) return;
+  _currentTab = tab;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
+  if (el) el.classList.add('active');
   const fab = document.querySelector('.fab');
+  const list = document.getElementById('ticket-list');
+  // スクロール位置リセット
+  if (list) list.scrollTop = 0;
+  window.scrollTo(0, 0);
   if (tab === 'received') {
     if (fab) fab.style.display = 'none';
     renderReceivedTickets();
@@ -1251,8 +1264,10 @@ function setupSwipe(el) {
   el.addEventListener('touchmove',  e => { onMove(e.touches[0].clientX); }, {passive: true});
   el.addEventListener('touchend',   onEnd);
   el.addEventListener('mousedown',  e => { onStart(e.clientX); });
-  document.addEventListener('mousemove', e => { if (isDragging) onMove(e.clientX); });
-  document.addEventListener('mouseup',   () => { if (isDragging) onEnd(); });
+  // mousemove/mouseupはelement単位で登録（document全体に重複登録しない）
+  el.addEventListener('mousemove', e => { if (isDragging) onMove(e.clientX); });
+  el.addEventListener('mouseup',   () => { if (isDragging) onEnd(); });
+  el.addEventListener('mouseleave',() => { if (isDragging) onEnd(); });
 }
 
 function resetSwipe(el) {
@@ -1352,9 +1367,11 @@ function renderTicketList() {
       badgeHtml = '<span style="background:#1D9E75;color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;background:#7FFF00;border-radius:50%;box-shadow:0 0 6px #7FFF00;animation:pulseBadge 1.5s ease-in-out infinite;"></span>有効</span>';
     }
 
+    const creatorLineMine = formatCreator(t);
     content.innerHTML = `
       <div class="ticket-title">${t.title}</div>
       <div class="ticket-sub">${t.desc || '有効期限: ' + expiryStr}</div>
+      ${creatorLineMine ? `<div style="font-size:10px;opacity:0.75;margin-bottom:8px;">${creatorLineMine}</div>` : ''}
       <div class="ticket-footer">
         <span style="font-size:12px;opacity:0.85">残り ${remain} / ${t.total} 枚</span>
         ${badgeHtml}
@@ -1626,9 +1643,11 @@ function renderReceivedTickets() {
       badgeHtml = '<span style="background:#1D9E75;color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;background:#7FFF00;border-radius:50%;box-shadow:0 0 6px #7FFF00;animation:pulseBadge 1.5s ease-in-out infinite;"></span>有効</span>';
     }
 
+    const creatorLine = formatCreator(t);
     content.innerHTML = `
       <div class="ticket-title">${t.title}</div>
       <div class="ticket-sub">${t.desc || ''}</div>
+      ${creatorLine ? `<div style="font-size:10px;opacity:0.75;margin-bottom:8px;">${creatorLine}</div>` : ''}
       <div class="ticket-footer">
         <span style="font-size:12px;opacity:0.85">残り ${remain} / ${t.total} 枚</span>
         ${badgeHtml}
@@ -1650,6 +1669,7 @@ function openReceivedDetail(i) {
   const remain = t.total - (t.used || 0);
   document.getElementById('detail-title').textContent = t.title;
   document.getElementById('detail-desc').textContent = t.desc || '';
+  document.getElementById('detail-creator').textContent = formatCreator(t);
   document.getElementById('detail-expiry').textContent = t.expiry ? '有効期限: ' + t.expiry : '有効期限: 無制限';
   document.getElementById('detail-color-overlay').style.background =
     `linear-gradient(135deg,${COLOR_GRADS[t.color][0]},${COLOR_GRADS[t.color][1]})`;
@@ -1827,6 +1847,8 @@ function processReceivedData(raw) {
       total: data.total || 1, used: 0,
       color: data.color || 0,
       imgData: data.imgData || null,
+      creatorName: data.creatorName || '',
+      creatorId: data.creatorId || '',
       received: true
     };
     receivedTickets.unshift(newT);
@@ -1920,8 +1942,11 @@ const PEER_CONFIG = {
 };
 
 function setConnStatus(text, color) {
-  const el = document.getElementById('conn-status');
-  if (el) { el.textContent = text; el.style.color = color; }
+  const bar = document.getElementById('conn-bar');
+  if (bar) {
+    bar.textContent = 'v2.1 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.style.background = color || '#888';
+  }
 }
 
 function attachPeerHandlers(p) {
@@ -1939,7 +1964,7 @@ function attachPeerHandlers(p) {
     conn.on('data', (data) => {
       console.log('[P2P] data received', data && data.type);
       if (data && data.type === 'ticket') {
-        handleP2PTicket(data.ticket, data.senderName || '友達');
+        handleP2PTicket(data.ticket, data.senderName || '友達', data.senderId || '');
       }
     });
     conn.on('error', (e) => console.error('[P2P] conn error', e));
@@ -1986,7 +2011,16 @@ function updatePeerIdDisplay() {
   if (r) r.textContent = id;
 }
 
-function handleP2PTicket(ticketData, senderName) {
+function formatCreator(t) {
+  if (!t) return '';
+  const name = t.creatorName || '';
+  const id = t.creatorId || '';
+  if (!name && !id) return '';
+  if (name && id) return '作成: ' + name + ' (' + id + ')';
+  return '作成: ' + (name || id);
+}
+
+function handleP2PTicket(ticketData, senderName, senderId) {
   const exists = receivedTickets.some(t =>
     t.title === ticketData.title && t.color === ticketData.color && t.desc === ticketData.desc
   );
@@ -1999,6 +2033,8 @@ function handleP2PTicket(ticketData, senderName) {
       used: 0,
       color: ticketData.color || 0,
       imgData: ticketData.imgData || null,
+      creatorName: ticketData.creatorName || senderName || '',
+      creatorId: ticketData.creatorId || senderId || '',
       received: true
     });
     saveReceivedTickets();
@@ -2037,11 +2073,38 @@ function copyMyPeerId() {
   }
 }
 
-function sendTicketDirect() {
-  try { _sendTicketDirect(); } catch(e) { showAlert('送信エラー: ' + e.message); console.error(e); }
+function compressImageData(dataUrl, maxWidth, maxHeight, quality) {
+  return new Promise((resolve) => {
+    if (!dataUrl) { resolve(null); return; }
+    if (dataUrl.length < 8000) { resolve(dataUrl); return; }
+    const img = new Image();
+    img.onload = () => {
+      let w = img.naturalWidth || img.width;
+      let h = img.naturalHeight || img.height;
+      const ratio = Math.min(maxWidth / w, maxHeight / h, 1);
+      w = Math.max(1, Math.round(w * ratio));
+      h = Math.max(1, Math.round(h * ratio));
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const cx = c.getContext('2d');
+      cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h);
+      cx.drawImage(img, 0, 0, w, h);
+      try { resolve(c.toDataURL('image/jpeg', quality)); }
+      catch(e) { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
 }
-function _sendTicketDirect() {
-  showAlert('送信処理を開始します（v1.3）');
+
+function sendTicketDirect() {
+  _sendTicketDirect().catch((e) => {
+    const detail = (e && (e.message || e.toString())) || JSON.stringify(e) || 'unknown';
+    showAlert('送信エラー: ' + detail);
+    console.error('[P2P] catch:', e);
+  });
+}
+async function _sendTicketDirect() {
   const input = document.getElementById('direct-peer-id-input');
   const recipientId = (input ? input.value : '').trim();
   if (!recipientId) { showAlert('送信先の受け取りIDを入力してください'); return; }
@@ -2053,12 +2116,21 @@ function _sendTicketDirect() {
   }
   if (recipientId === myPeerId) { showAlert('自分自身には送れません'); return; }
 
-  const ticket = tickets[currentTicket];
+  const fromArr = (window._viewingReceived ? receivedTickets : tickets) || [];
+  const ticket = fromArr[currentTicket];
   if (!ticket) { showAlert('チケットが見つかりません'); return; }
-  const imgData = localStorage.getItem(imgKey(ticket.id));
+  let imgData = ticket.imgData || localStorage.getItem(imgKey(ticket));
 
   const btn = document.getElementById('direct-send-btn');
-  if (btn) { btn.textContent = '送信中...'; btn.disabled = true; }
+  if (btn) { btn.textContent = '画像圧縮中...'; btn.disabled = true; }
+
+  // 画像を圧縮（340x130のJPEG品質0.6）
+  if (imgData) {
+    const before = imgData.length;
+    imgData = await compressImageData(imgData, 340, 130, 0.6);
+    console.log('[P2P] image compressed:', before, '→', imgData ? imgData.length : 0);
+  }
+  if (btn) btn.textContent = '送信中...';
 
   let opened = false;
   let finished = false;
@@ -2070,8 +2142,8 @@ function _sendTicketDirect() {
     showAlert(msg);
   };
 
-  console.log('[P2P] connecting to', recipientId);
-  const conn = peer.connect(recipientId, { reliable: true, serialization: 'json' });
+  console.log('[P2P] connecting to', recipientId, 'imgSize=', imgData ? imgData.length : 0);
+  const conn = peer.connect(recipientId, { reliable: true });
 
   const timeout = setTimeout(() => {
     if (!opened) {
@@ -2086,7 +2158,11 @@ function _sendTicketDirect() {
     console.log('[P2P] sending ticket to', recipientId);
     const myName = localStorage.getItem('myName') || '友達';
     try {
-      conn.send({ type: 'ticket', ticket: Object.assign({}, ticket, { imgData }), senderName: myName });
+      // 作成者情報がない（古いチケット）場合は送り主を作成者として埋める
+      const ticketToSend = Object.assign({}, ticket, { imgData });
+      if (!ticketToSend.creatorName) ticketToSend.creatorName = myName;
+      if (!ticketToSend.creatorId) ticketToSend.creatorId = myPeerId || '';
+      conn.send({ type: 'ticket', ticket: ticketToSend, senderName: myName, senderId: myPeerId || '' });
     } catch(e) {
       finish(false, '送信エラー: ' + e.message);
       return;
@@ -2094,13 +2170,14 @@ function _sendTicketDirect() {
     setTimeout(() => {
       try { conn.close(); } catch(e) {}
       finish(true, 'チケットを送信しました！');
-    }, 2500);
+    }, 4000);
   });
 
   conn.on('error', (err) => {
     console.error('[P2P] send error', err);
     clearTimeout(timeout);
-    finish(false, '送信に失敗しました：' + (err && err.type === 'peer-unavailable' ? '相手のIDが見つかりません' : 'IDを確認してください'));
+    const t = err && (err.type || err.message) || 'unknown';
+    finish(false, '送信失敗(' + t + ')');
   });
 }
 
