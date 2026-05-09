@@ -152,7 +152,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v4.5 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v4.6 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -546,29 +546,46 @@ function getPos(e, c) {
   return [(s.clientX - r.left) * sx, (s.clientY - r.top) * sy];
 }
 
+let _prevMid = null;
 function strokeStart(x, y) {
   pushHistory();
   drawing = true;
   lastX = x; lastY = y;
-  // 点をひとつ打つ（ワンタップ用）
+  _prevMid = { x, y };
+  // ワンタップでも点が描けるよう開始点に円を打つ
   ctx.beginPath(); ctx.fillStyle = brushColor;
   ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2); ctx.fill();
 }
 function strokeMove(x, y) {
   if (!drawing) return;
-  // 中点を使った滑らかな曲線
   const mx = (lastX + x) / 2, my = (lastY + y) / 2;
   ctx.beginPath();
-  ctx.moveTo(lastX, lastY);
+  ctx.moveTo(_prevMid.x, _prevMid.y);
+  // 制御点 (lastX,lastY) を通って新中点まで滑らかに
   ctx.quadraticCurveTo(lastX, lastY, mx, my);
   ctx.strokeStyle = brushColor;
   ctx.lineWidth = brushSize;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.stroke();
+  _prevMid = { x: mx, y: my };
   lastX = x; lastY = y;
 }
-function strokeEnd() { drawing = false; }
+function strokeEnd() {
+  if (drawing && _prevMid) {
+    // 最後の点まで補完
+    ctx.beginPath();
+    ctx.moveTo(_prevMid.x, _prevMid.y);
+    ctx.lineTo(lastX, lastY);
+    ctx.strokeStyle = brushColor;
+    ctx.lineWidth = brushSize;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+  }
+  drawing = false;
+  _prevMid = null;
+}
 
 canvas.addEventListener('mousedown', e => { if (currentTool !== 'draw') return; const [x,y]=getPos(e,canvas); strokeStart(x,y); });
 canvas.addEventListener('mousemove', e => { if (!drawing || currentTool !== 'draw') return; const [x,y]=getPos(e,canvas); strokeMove(x,y); });
@@ -2343,7 +2360,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v4.5 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v4.6 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
