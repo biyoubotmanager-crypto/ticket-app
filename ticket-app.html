@@ -106,7 +106,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v3.1 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v3.2 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -150,8 +150,8 @@
       <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:13px;color:#888" id="home-count">3枚</span><button onclick="openSettings()" style="background:none;border:none;font-size:18px;cursor:pointer;padding:2px;color:#888;">⚙️</button></div>
     </div>
     <div class="tab-bar">
-      <div class="tab active" onclick="switchTab('mine',this)">作成済み</div>
-      <div class="tab" onclick="switchTab('received',this)">受け取り</div>
+      <div class="tab active" onclick="switchTab('received',this)">受け取り</div>
+      <div class="tab" onclick="switchTab('mine',this)">作成済み</div>
     </div>
     <div class="ticket-grid" id="ticket-list"></div>
     <button class="fab" onclick="openCreate()">+</button>
@@ -1248,7 +1248,7 @@ function drawShareQR(url) {
 }
 
 
-let _currentTab = (function(){ try { return localStorage.getItem('currentTab') || 'mine'; } catch(e) { return 'mine'; } })();
+let _currentTab = (function(){ try { return localStorage.getItem('currentTab') || 'received'; } catch(e) { return 'received'; } })();
 function switchTab(tab, el) {
   // 同じタブの連打は無視（再描画で表示が消えるのを防ぐ）
   if (tab === _currentTab && el && el.classList.contains('active')) return;
@@ -1445,15 +1445,15 @@ function openCreate() {
 }
 
 function goHome() {
-  // 直前に開いていたタブを維持
+  // 直前に開いていたタブを維持（タブ順: [0]受け取り, [1]作成済み）
   const tabs = document.querySelectorAll('.tab');
   if (_currentTab === 'received') {
-    tabs.forEach((t, i) => t.classList.toggle('active', i === 1));
+    tabs.forEach((t, i) => t.classList.toggle('active', i === 0));
     const fab = document.querySelector('.fab');
     if (fab) fab.style.display = 'none';
     renderReceivedTickets();
   } else {
-    tabs.forEach((t, i) => t.classList.toggle('active', i === 0));
+    tabs.forEach((t, i) => t.classList.toggle('active', i === 1));
     const fab = document.querySelector('.fab');
     if (fab) fab.style.display = '';
     renderTicketList();
@@ -2113,7 +2113,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = 'v3.1 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = 'v3.2 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     bar.style.background = color || '#888';
   }
 }
@@ -2432,16 +2432,16 @@ loadReceivedTickets();
 loadFriends();
 loadName();
 checkUrlTicket();
-// 前回のタブ状態を復元
+// 前回のタブ状態を復元（タブ順: [0]受け取り, [1]作成済み）
 (function restoreTab(){
   const tabs = document.querySelectorAll('.tab');
   if (_currentTab === 'received') {
-    tabs.forEach((t, i) => t.classList.toggle('active', i === 1));
+    tabs.forEach((t, i) => t.classList.toggle('active', i === 0));
     const fab = document.querySelector('.fab');
     if (fab) fab.style.display = 'none';
     renderReceivedTickets();
   } else {
-    tabs.forEach((t, i) => t.classList.toggle('active', i === 0));
+    tabs.forEach((t, i) => t.classList.toggle('active', i === 1));
     renderTicketList();
   }
 })();
