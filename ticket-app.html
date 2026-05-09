@@ -152,7 +152,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v4.9 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v5.0 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -1614,7 +1614,7 @@ function renderTicketList() {
     if (t.imgData) {
       const img = document.createElement('img');
       img.className = 'tc-img'; img.src = t.imgData;
-      img.style.cssText = 'position:absolute;top:0;right:0;height:100%;width:auto;opacity:0.5;object-fit:none;object-position:right center;border-radius:16px;';
+      img.style.cssText = 'position:absolute;top:0;right:0;bottom:0;height:100%;width:60%;opacity:0.9;object-fit:contain;object-position:right center;border-radius:22px;';
       div.appendChild(img);
     }
     const content = document.createElement('div');
@@ -1686,6 +1686,15 @@ function goHome() {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  try {
+    if (id === 'detail-screen') {
+      localStorage.setItem('lastScreen', 'detail');
+      localStorage.setItem('lastDetailIdx', String(currentTicket));
+      localStorage.setItem('lastDetailIsReceived', window._viewingReceived ? '1' : '0');
+    } else if (id === 'home-screen') {
+      localStorage.removeItem('lastScreen');
+    }
+  } catch(e) {}
 }
 
 // ============================================================
@@ -2011,7 +2020,7 @@ function renderReceivedTickets() {
     };
     if (t.imgData) {
       const img = document.createElement('img');
-      img.style.cssText = 'position:absolute;top:0;right:0;height:100%;width:auto;opacity:0.5;object-fit:none;object-position:right center;border-radius:16px;';
+      img.style.cssText = 'position:absolute;top:0;right:0;bottom:0;height:100%;width:60%;opacity:0.9;object-fit:contain;object-position:right center;border-radius:22px;';
       img.src = t.imgData;
       div.appendChild(img);
     }
@@ -2360,7 +2369,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v4.9 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v5.0 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
@@ -2705,6 +2714,20 @@ initPeer();
 setInterval(() => { if (myPeerId) fetchOfflineTickets(); }, 30000);
 // 画面復帰時にも即チェック
 document.addEventListener('visibilitychange', () => { if (!document.hidden && myPeerId) fetchOfflineTickets(); });
+// 詳細画面の復元（リロード対応）
+(function restoreDetail(){
+  try {
+    if (localStorage.getItem('lastScreen') === 'detail') {
+      const idx = parseInt(localStorage.getItem('lastDetailIdx') || '-1', 10);
+      const isReceived = localStorage.getItem('lastDetailIsReceived') === '1';
+      const arr = isReceived ? receivedTickets : tickets;
+      if (idx >= 0 && arr[idx]) {
+        if (isReceived) openReceivedDetail(idx);
+        else openDetail(idx);
+      }
+    }
+  } catch(e) {}
+})();
 </script>
 </body>
 </html>
