@@ -101,7 +101,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v2.0 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v2.1 接続中...</div>
 <!-- P2P受信通知バナー -->
 <div id="p2p-banner" style="display:none;position:fixed;top:30px;left:0;right:0;z-index:9999;background:#7F77DD;color:white;padding:14px 20px;font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,0.2);align-items:center;justify-content:space-between;">
   <span id="p2p-banner-text"></span>
@@ -1367,9 +1367,11 @@ function renderTicketList() {
       badgeHtml = '<span style="background:#1D9E75;color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;background:#7FFF00;border-radius:50%;box-shadow:0 0 6px #7FFF00;animation:pulseBadge 1.5s ease-in-out infinite;"></span>有効</span>';
     }
 
+    const creatorLineMine = formatCreator(t);
     content.innerHTML = `
       <div class="ticket-title">${t.title}</div>
       <div class="ticket-sub">${t.desc || '有効期限: ' + expiryStr}</div>
+      ${creatorLineMine ? `<div style="font-size:10px;opacity:0.75;margin-bottom:8px;">${creatorLineMine}</div>` : ''}
       <div class="ticket-footer">
         <span style="font-size:12px;opacity:0.85">残り ${remain} / ${t.total} 枚</span>
         ${badgeHtml}
@@ -1641,9 +1643,11 @@ function renderReceivedTickets() {
       badgeHtml = '<span style="background:#1D9E75;color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;background:#7FFF00;border-radius:50%;box-shadow:0 0 6px #7FFF00;animation:pulseBadge 1.5s ease-in-out infinite;"></span>有効</span>';
     }
 
+    const creatorLine = formatCreator(t);
     content.innerHTML = `
       <div class="ticket-title">${t.title}</div>
       <div class="ticket-sub">${t.desc || ''}</div>
+      ${creatorLine ? `<div style="font-size:10px;opacity:0.75;margin-bottom:8px;">${creatorLine}</div>` : ''}
       <div class="ticket-footer">
         <span style="font-size:12px;opacity:0.85">残り ${remain} / ${t.total} 枚</span>
         ${badgeHtml}
@@ -1940,7 +1944,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = 'v2.0 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = 'v2.1 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     bar.style.background = color || '#888';
   }
 }
@@ -1960,7 +1964,7 @@ function attachPeerHandlers(p) {
     conn.on('data', (data) => {
       console.log('[P2P] data received', data && data.type);
       if (data && data.type === 'ticket') {
-        handleP2PTicket(data.ticket, data.senderName || '友達');
+        handleP2PTicket(data.ticket, data.senderName || '友達', data.senderId || '');
       }
     });
     conn.on('error', (e) => console.error('[P2P] conn error', e));
@@ -2016,7 +2020,7 @@ function formatCreator(t) {
   return '作成: ' + (name || id);
 }
 
-function handleP2PTicket(ticketData, senderName) {
+function handleP2PTicket(ticketData, senderName, senderId) {
   const exists = receivedTickets.some(t =>
     t.title === ticketData.title && t.color === ticketData.color && t.desc === ticketData.desc
   );
@@ -2030,7 +2034,7 @@ function handleP2PTicket(ticketData, senderName) {
       color: ticketData.color || 0,
       imgData: ticketData.imgData || null,
       creatorName: ticketData.creatorName || senderName || '',
-      creatorId: ticketData.creatorId || '',
+      creatorId: ticketData.creatorId || senderId || '',
       received: true
     });
     saveReceivedTickets();
@@ -2154,7 +2158,11 @@ async function _sendTicketDirect() {
     console.log('[P2P] sending ticket to', recipientId);
     const myName = localStorage.getItem('myName') || '友達';
     try {
-      conn.send({ type: 'ticket', ticket: Object.assign({}, ticket, { imgData }), senderName: myName });
+      // 作成者情報がない（古いチケット）場合は送り主を作成者として埋める
+      const ticketToSend = Object.assign({}, ticket, { imgData });
+      if (!ticketToSend.creatorName) ticketToSend.creatorName = myName;
+      if (!ticketToSend.creatorId) ticketToSend.creatorId = myPeerId || '';
+      conn.send({ type: 'ticket', ticket: ticketToSend, senderName: myName, senderId: myPeerId || '' });
     } catch(e) {
       finish(false, '送信エラー: ' + e.message);
       return;
