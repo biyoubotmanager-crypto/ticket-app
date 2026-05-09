@@ -101,7 +101,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v1.8 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v1.9 接続中...</div>
 <!-- P2P受信通知バナー -->
 <div id="p2p-banner" style="display:none;position:fixed;top:30px;left:0;right:0;z-index:9999;background:#7F77DD;color:white;padding:14px 20px;font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,0.2);align-items:center;justify-content:space-between;">
   <span id="p2p-banner-text"></span>
@@ -1201,10 +1201,18 @@ function drawShareQR(url) {
 }
 
 
+let _currentTab = 'mine';
 function switchTab(tab, el) {
+  // 同じタブの連打は無視（再描画で表示が消えるのを防ぐ）
+  if (tab === _currentTab && el && el.classList.contains('active')) return;
+  _currentTab = tab;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
+  if (el) el.classList.add('active');
   const fab = document.querySelector('.fab');
+  const list = document.getElementById('ticket-list');
+  // スクロール位置リセット
+  if (list) list.scrollTop = 0;
+  window.scrollTo(0, 0);
   if (tab === 'received') {
     if (fab) fab.style.display = 'none';
     renderReceivedTickets();
@@ -1253,8 +1261,10 @@ function setupSwipe(el) {
   el.addEventListener('touchmove',  e => { onMove(e.touches[0].clientX); }, {passive: true});
   el.addEventListener('touchend',   onEnd);
   el.addEventListener('mousedown',  e => { onStart(e.clientX); });
-  document.addEventListener('mousemove', e => { if (isDragging) onMove(e.clientX); });
-  document.addEventListener('mouseup',   () => { if (isDragging) onEnd(); });
+  // mousemove/mouseupはelement単位で登録（document全体に重複登録しない）
+  el.addEventListener('mousemove', e => { if (isDragging) onMove(e.clientX); });
+  el.addEventListener('mouseup',   () => { if (isDragging) onEnd(); });
+  el.addEventListener('mouseleave',() => { if (isDragging) onEnd(); });
 }
 
 function resetSwipe(el) {
@@ -1924,7 +1934,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = 'v1.8 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = 'v1.9 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     bar.style.background = color || '#888';
   }
 }
