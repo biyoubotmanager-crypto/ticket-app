@@ -101,7 +101,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v2.1 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:#888;color:white;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;">v2.2 接続中...</div>
 <!-- P2P受信通知バナー -->
 <div id="p2p-banner" style="display:none;position:fixed;top:30px;left:0;right:0;z-index:9999;background:#7F77DD;color:white;padding:14px 20px;font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,0.2);align-items:center;justify-content:space-between;">
   <span id="p2p-banner-text"></span>
@@ -1399,7 +1399,22 @@ function openCreate() {
   showScreen('create-screen');
 }
 
-function goHome() { renderTicketList(); showScreen('home-screen'); }
+function goHome() {
+  // 直前に開いていたタブを維持
+  const tabs = document.querySelectorAll('.tab');
+  if (_currentTab === 'received') {
+    tabs.forEach((t, i) => t.classList.toggle('active', i === 1));
+    const fab = document.querySelector('.fab');
+    if (fab) fab.style.display = 'none';
+    renderReceivedTickets();
+  } else {
+    tabs.forEach((t, i) => t.classList.toggle('active', i === 0));
+    const fab = document.querySelector('.fab');
+    if (fab) fab.style.display = '';
+    renderTicketList();
+  }
+  showScreen('home-screen');
+}
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -1944,7 +1959,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = 'v2.1 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = 'v2.2 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     bar.style.background = color || '#888';
   }
 }
