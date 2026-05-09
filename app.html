@@ -152,7 +152,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v4.4 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v4.5 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -276,21 +276,6 @@
             <div style="padding:8px 12px;border-top:1px solid #e0e0e0;">
               <div style="font-size:11px;color:#888;margin-bottom:6px;">キャラクター（タップで追加・ドラッグで移動・ピンチで拡大縮小）</div>
               <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;" id="char-btn-row"></div>
-              <div style="font-size:11px;color:#888;margin-bottom:6px;">スタンプ</div>
-              <div class="sticker-row" style="border-top:none;padding:0;">
-                <span class="sticker" onclick="placeSticker('🎉')">🎉</span>
-                <span class="sticker" onclick="placeSticker('🌸')">🌸</span>
-                <span class="sticker" onclick="placeSticker('⭐')">⭐</span>
-                <span class="sticker" onclick="placeSticker('🎈')">🎈</span>
-                <span class="sticker" onclick="placeSticker('🍀')">🍀</span>
-                <span class="sticker" onclick="placeSticker('🦄')">🦄</span>
-                <span class="sticker" onclick="placeSticker('🍕')">🍕</span>
-                <span class="sticker" onclick="placeSticker('🎸')">🎸</span>
-                <span class="sticker" onclick="placeSticker('🌈')">🌈</span>
-                <span class="sticker" onclick="placeSticker('💖')">💖</span>
-                <span class="sticker" onclick="placeSticker('🏆')">🏆</span>
-                <span class="sticker" onclick="placeSticker('🎀')">🎀</span>
-              </div>
               <div style="margin-top:8px;display:flex;gap:6px;">
                 <button onclick="deleteSelectedChar()" style="font-size:11px;padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;color:#e24b4a;">選択中を削除</button>
                 <button onclick="confirmChars()" style="font-size:11px;padding:4px 10px;border:1px solid #7F77DD;border-radius:6px;background:#7F77DD;cursor:pointer;color:white;">キャンバスに確定</button>
@@ -2358,7 +2343,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v4.4 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v4.5 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
