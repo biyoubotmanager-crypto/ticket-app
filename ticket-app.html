@@ -164,7 +164,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v6.7 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v6.8 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -1219,6 +1219,46 @@ function changeCount(d) {
   document.getElementById('count-display').textContent = newCount;
 }
 
+function getCroppedCanvasImage() {
+  // 描画した部分の境界を検出して、余白を切り取って保存
+  try {
+    const w = canvas.width, h = canvas.height;
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+    let minX = w, minY = h, maxX = -1, maxY = -1;
+    // 4ピクセルおきにサンプリング（パフォーマンス）
+    const step = 2;
+    for (let y = 0; y < h; y += step) {
+      for (let x = 0; x < w; x += step) {
+        const idx = (y * w + x) * 4;
+        if (d[idx + 3] > 8) {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < 0) return canvas.toDataURL(); // 何も描かれてない
+    // パディング追加
+    const pad = 16;
+    minX = Math.max(0, minX - pad);
+    minY = Math.max(0, minY - pad);
+    maxX = Math.min(w - 1, maxX + pad);
+    maxY = Math.min(h - 1, maxY + pad);
+    const cw = maxX - minX + 1;
+    const ch = maxY - minY + 1;
+    const tmp = document.createElement('canvas');
+    tmp.width = cw;
+    tmp.height = ch;
+    tmp.getContext('2d').drawImage(canvas, minX, minY, cw, ch, 0, 0, cw, ch);
+    return tmp.toDataURL('image/png');
+  } catch(e) {
+    console.error('crop error', e);
+    return canvas.toDataURL();
+  }
+}
+
 function createTicket() {
   const title = document.getElementById('new-title').value.trim();
   if (!title) { alert('チケット名を入力してください'); return; }
@@ -1226,7 +1266,7 @@ function createTicket() {
   const expiry = document.getElementById('new-expiry').value || '';
   if (bgImgObj) confirmBgImage();
   confirmChars();
-  const imgData = canvas.toDataURL();
+  const imgData = getCroppedCanvasImage();
   tickets.unshift({ title, desc, expiry, total: newCount, used: 0, color: selectedColor, imgData, creatorName: (myName || '自分'), creatorId: myPeerId || '' });
   saveTickets();
   goHome();
@@ -2789,7 +2829,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v6.7 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v6.8 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
