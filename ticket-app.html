@@ -164,7 +164,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v6.4 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v6.5 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -334,6 +334,7 @@
         <button class="use-btn" id="use-btn" onclick="useTicket()">タップして使用</button>
         <button class="action-btn primary" onclick="openShare()">友達に送る 🔗</button>
         <button class="action-btn" onclick="goHome()">ホームに戻る</button>
+        <button onclick="reportCurrentTicket()" id="report-btn" style="border:none;background:none;font-size:11px;cursor:pointer;color:#aaa;text-align:center;padding:6px;text-decoration:underline;">⚠ このチケットを通報・ブロック</button>
       </div>
     </div>
   </div>
@@ -428,6 +429,7 @@
       </div>
       <button onclick="openReceiveCamera()" style="border:none;border-radius:18px;padding:15px;font-size:15px;cursor:pointer;background:linear-gradient(135deg,#FFB6C1,#B19CD9);color:white;text-align:center;font-weight:700;letter-spacing:0.5px;box-shadow:0 4px 14px rgba(177,156,217,0.35);">📷 友達のQRを読み取る</button>
       <button onclick="openFriends()" style="border:1.5px solid #f0e6ff;border-radius:16px;padding:14px;font-size:14px;cursor:pointer;background:#fff;color:#5b4fb8;text-align:center;font-weight:700;">👥 友達を管理する</button>
+      <button onclick="openSafety()" style="border:1.5px solid #f0e6ff;border-radius:16px;padding:14px;font-size:14px;cursor:pointer;background:#fff;color:#5b4fb8;text-align:center;font-weight:700;">🛡 受信設定・ブロック</button>
       <button onclick="showResetConfirm()" style="border:1px solid #ffcccc;border-radius:12px;padding:14px;font-size:14px;cursor:pointer;background:#fff;color:#e24b4a;text-align:left;">🗑 データをリセットして最初から</button>
       <p style="font-size:11px;color:#aaa;line-height:1.6;padding:0 4px;">リセットすると作成済みのチケットと名前がすべて削除されます。</p>
 
@@ -451,6 +453,38 @@
       <span class="back-btn" onclick="onClearAllNotifications()" style="font-size:12px;">全削除</span>
     </div>
     <div id="notif-list" style="padding:14px 18px;display:flex;flex-direction:column;gap:10px;"></div>
+  </div>
+
+  <!-- 受信設定・ブロック画面 -->
+  <div class="screen" id="safety-screen">
+    <div class="top-bar">
+      <span class="back-btn" onclick="showScreen('settings-screen')">← 戻る</span>
+      <h1>🛡 受信設定</h1>
+      <span></span>
+    </div>
+    <div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px;">
+      <div style="background:#f8f8f8;border-radius:14px;padding:14px 16px;">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+          <input type="checkbox" id="friends-only-toggle" onchange="onToggleFriendsOnly()" style="transform:scale(1.3);">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#111;">友達のみから受信</div>
+            <div style="font-size:11px;color:#888;margin-top:2px;">登録した友達以外からのチケットを自動拒否</div>
+          </div>
+        </label>
+      </div>
+      <div style="background:#f8f8f8;border-radius:14px;padding:14px 16px;">
+        <div style="font-size:13px;color:#555;line-height:1.7;">
+          <div style="font-weight:700;color:#5b4fb8;margin-bottom:6px;">⚙ その他自動的に有効な対策</div>
+          <div>• 同じ送り主から<strong>5分以内に3件超</strong>は自動拒否</div>
+          <div>• 不適切なワード（暴力・性的表現）を含む場合は拒否</div>
+          <div>• タイトル80字 / 説明200字超は拒否</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#5b4fb8;margin-bottom:8px;">🚫 ブロックリスト</div>
+        <div id="blocked-list-wrap"></div>
+      </div>
+    </div>
   </div>
 
   <!-- 友達一覧画面 -->
@@ -507,6 +541,7 @@
         <button onclick="rejectIncoming()" style="flex:1;background:#fff;border:1.5px solid #ddd;border-radius:14px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;color:#666;">拒否</button>
         <button onclick="acceptIncoming()" style="flex:1;background:linear-gradient(135deg,#FFB6C1,#B19CD9);border:none;border-radius:14px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;color:#fff;box-shadow:0 3px 10px rgba(177,156,217,0.35);">受け取る ✨</button>
       </div>
+      <button onclick="blockIncoming()" style="margin-top:10px;background:#fff0f0;border:1.5px solid #ffcccc;border-radius:12px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;color:#e24b4a;width:100%;">🚫 この相手をブロック</button>
       <div id="accept-counter" style="font-size:11px;color:#aaa;margin-top:10px;"></div>
     </div>
   </div>
@@ -1913,11 +1948,71 @@ function onNotificationClick(n) {
   }
 }
 
+function reportCurrentTicket() {
+  const isReceived = !!window._viewingReceived;
+  const arr = isReceived ? receivedTickets : tickets;
+  const t = arr[currentTicket];
+  if (!t) return;
+  if (!isReceived) {
+    showAlert('自分で作ったチケットは通報できません');
+    return;
+  }
+  const senderId = t.creatorId || '';
+  const senderName = t.creatorName || '送り主不明';
+  if (!confirm(`「${senderName}」(${senderId || '不明'}) を通報してブロックしますか？\n・このチケットは削除されます\n・以降この相手からの受信は自動拒否されます`)) return;
+  if (senderId) blockPeer(senderId, senderName);
+  // チケットを削除
+  receivedTickets.splice(currentTicket, 1);
+  saveReceivedTickets();
+  addNotification('blocked_msg', '通報・ブロック完了', senderName + 'を通報してブロックしました', { peerId: senderId });
+  goHome();
+  showAlert('通報・ブロックしました');
+}
+
 function onClearAllNotifications() {
   if (notifications.length === 0) return;
   if (!confirm('すべての通知を削除しますか？')) return;
   clearNotifications();
   renderNotifications();
+}
+
+function openSafety() {
+  document.getElementById('friends-only-toggle').checked = friendsOnlyMode;
+  renderBlockedList();
+  showScreen('safety-screen');
+}
+
+function onToggleFriendsOnly() {
+  const v = document.getElementById('friends-only-toggle').checked;
+  setFriendsOnly(v);
+  showAlert(v ? '友達のみ受信モードに設定しました' : '通常モードに戻しました');
+}
+
+function renderBlockedList() {
+  const wrap = document.getElementById('blocked-list-wrap');
+  if (!wrap) return;
+  if (blockedIds.length === 0) {
+    wrap.innerHTML = '<div style="text-align:center;color:#aaa;font-size:12px;padding:18px;">ブロック中の相手はいません</div>';
+    return;
+  }
+  wrap.innerHTML = '';
+  blockedIds.forEach(b => {
+    const row = document.createElement('div');
+    row.style.cssText = 'background:#fff;border:1.5px solid #ffcccc;border-radius:12px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;';
+    row.innerHTML =
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:13px;font-weight:700;color:#e24b4a;">' + (b.name || '(名前不明)') + '</div>' +
+        '<div style="font-size:11px;color:#888;word-break:break-all;">ID: ' + b.peerId + '</div>' +
+      '</div>' +
+      '<button data-id="' + b.peerId + '" style="background:#fff;border:1.5px solid #ddd;color:#5b4fb8;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;font-weight:600;">解除</button>';
+    row.querySelector('button').onclick = () => {
+      if (confirm('「' + (b.name || b.peerId) + '」のブロックを解除しますか？')) {
+        unblockPeer(b.peerId);
+        renderBlockedList();
+      }
+    };
+    wrap.appendChild(row);
+  });
 }
 
 function openFriends() {
@@ -2123,6 +2218,75 @@ if (charBtnRow) {
 // ============================================================
 let receivedTickets = [];
 let friends = [];
+
+// ============================================================
+// 荒らし対策
+// ============================================================
+let blockedIds = [];
+let friendsOnlyMode = false;
+let ngWords = ['死ね', 'shineくたばれ', '殺', 'sex', 'fuck'];
+let recentSenders = {}; // {peerId: [ts, ts, ts]}
+const RATE_LIMIT_WINDOW = 5 * 60 * 1000; // 5分
+const RATE_LIMIT_MAX = 3; // 5分間に3件まで
+const MAX_TITLE_LEN = 80;
+const MAX_DESC_LEN = 200;
+
+function loadAbusePrefs() {
+  try {
+    blockedIds = JSON.parse(localStorage.getItem('blockedIds') || '[]');
+  } catch(e) { blockedIds = []; }
+  friendsOnlyMode = localStorage.getItem('friendsOnly') === '1';
+  try {
+    const customNg = JSON.parse(localStorage.getItem('ngWords') || 'null');
+    if (Array.isArray(customNg)) ngWords = customNg;
+  } catch(e) {}
+}
+function saveBlockedIds() { try { localStorage.setItem('blockedIds', JSON.stringify(blockedIds)); } catch(e) {} }
+function blockPeer(peerId, name) {
+  if (!peerId) return;
+  if (blockedIds.find(b => b.peerId === peerId)) return;
+  blockedIds.push({ peerId, name: name || '', ts: Date.now() });
+  saveBlockedIds();
+}
+function unblockPeer(peerId) {
+  blockedIds = blockedIds.filter(b => b.peerId !== peerId);
+  saveBlockedIds();
+}
+function isBlocked(peerId) { return blockedIds.some(b => b.peerId === peerId); }
+function setFriendsOnly(on) {
+  friendsOnlyMode = !!on;
+  localStorage.setItem('friendsOnly', on ? '1' : '0');
+}
+
+function checkRateLimit(peerId) {
+  if (!peerId) return true; // ID不明はパスさせるが他のチェックで弾く
+  const now = Date.now();
+  const arr = (recentSenders[peerId] || []).filter(t => now - t < RATE_LIMIT_WINDOW);
+  if (arr.length >= RATE_LIMIT_MAX) {
+    recentSenders[peerId] = arr;
+    return false;
+  }
+  arr.push(now);
+  recentSenders[peerId] = arr;
+  return true;
+}
+
+function containsNgWord(text) {
+  if (!text) return false;
+  const lower = String(text).toLowerCase();
+  return ngWords.some(w => w && lower.includes(String(w).toLowerCase()));
+}
+
+function shouldRejectIncoming(ticketData, senderId) {
+  if (senderId && isBlocked(senderId)) return { reject: true, reason: 'blocked' };
+  if (friendsOnlyMode && senderId && !friends.some(f => f.peerId === senderId)) return { reject: true, reason: 'not-friend' };
+  if (!checkRateLimit(senderId)) return { reject: true, reason: 'rate-limit' };
+  if (containsNgWord(ticketData.title) || containsNgWord(ticketData.desc)) return { reject: true, reason: 'ng-word' };
+  // 文字数制限
+  if ((ticketData.title || '').length > MAX_TITLE_LEN) return { reject: true, reason: 'title-too-long' };
+  if ((ticketData.desc || '').length > MAX_DESC_LEN) return { reject: true, reason: 'desc-too-long' };
+  return { reject: false };
+}
 
 let notifications = [];
 const NOTIF_MAX = 50;
@@ -2620,7 +2784,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v6.4 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v6.5 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
@@ -2715,6 +2879,13 @@ let incomingQueue = [];
 let incomingShowing = false;
 
 function handleP2PTicket(ticketData, senderName, senderId) {
+  // 荒らし対策チェック（先に弾く）
+  const check = shouldRejectIncoming(ticketData || {}, senderId || '');
+  if (check.reject) {
+    console.warn('[abuse-block]', check.reason, senderId);
+    addNotification('blocked_msg', '受信ブロック', '不適切または制限により受信を拒否しました（理由: ' + check.reason + '）', { reason: check.reason });
+    return;
+  }
   // 重複チェック
   const dupReceived = receivedTickets.some(t =>
     t.title === ticketData.title && t.color === ticketData.color && t.desc === ticketData.desc
@@ -2785,6 +2956,19 @@ function rejectIncoming() {
   setTimeout(showNextIncoming, 200);
 }
 
+function blockIncoming() {
+  const cur = incomingQueue[0];
+  if (!cur) return;
+  if (!confirm(`「${cur.senderName}」(${cur.senderId || '不明'}) をブロックしますか？\n以降この相手からの受信は自動で拒否されます。`)) return;
+  if (cur.senderId) blockPeer(cur.senderId, cur.senderName);
+  // 同じ送り主から来ているキュー内の他のチケットも全て破棄
+  incomingQueue = incomingQueue.filter(q => q.senderId !== cur.senderId);
+  document.getElementById('accept-wrap').style.display = 'none';
+  incomingShowing = false;
+  addNotification('blocked_msg', 'ブロックしました', cur.senderName + 'をブロックリストに追加', { peerId: cur.senderId });
+  setTimeout(showNextIncoming, 200);
+}
+
 function showP2PBanner(msg) {
   const banner = document.getElementById('p2p-banner');
   const text = document.getElementById('p2p-banner-text');
@@ -2838,6 +3022,7 @@ async function sendViaFirebase(recipientId, ticket, senderName, senderId) {
   return true;
 }
 
+const FIREBASE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7日経過したメッセージは破棄
 async function fetchOfflineTickets() {
   if (!myPeerId) return;
   try {
@@ -2847,8 +3032,19 @@ async function fetchOfflineTickets() {
     if (!data) return;
     const keys = Object.keys(data);
     let processed = 0;
+    const now = Date.now();
     for (const key of keys) {
       const msg = data[key];
+      // 期限切れ自動削除
+      if (msg && msg.ts && (now - msg.ts) > FIREBASE_MAX_AGE_MS) {
+        try { await fetch(inboxItemUrl(myPeerId, key), { method: 'DELETE' }); } catch(e) {}
+        continue;
+      }
+      // ブロックリスト・荒らし対策
+      if (msg && msg.senderId && isBlocked(msg.senderId)) {
+        try { await fetch(inboxItemUrl(myPeerId, key), { method: 'DELETE' }); } catch(e) {}
+        continue;
+      }
       if (msg && msg.ticket) {
         handleP2PTicket(msg.ticket, msg.senderName || '友達', msg.senderId || '');
         processed++;
@@ -2858,7 +3054,7 @@ async function fetchOfflineTickets() {
       } else {
         continue;
       }
-      // 受信完了したら削除
+      // 処理完了したら削除
       try {
         await fetch(inboxItemUrl(myPeerId, key), { method: 'DELETE' });
       } catch(e) {}
@@ -2996,6 +3192,7 @@ async function _sendTicketDirect() {
   });
 }
 
+loadAbusePrefs();
 loadTickets();
 loadReceivedTickets();
 loadFriends();
