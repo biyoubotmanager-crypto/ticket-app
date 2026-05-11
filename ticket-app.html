@@ -169,7 +169,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.20 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.21 接続中...</div>
 <!-- ホーム画面追加ガイド -->
 <div id="install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9997;background:linear-gradient(135deg,#FFE5F1,#E8E2FF);padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 14px);box-shadow:0 -4px 20px rgba(177,156,217,0.25);">
   <div style="max-width:390px;margin:0 auto;display:flex;gap:10px;align-items:center;">
@@ -382,7 +382,7 @@
       <div class="detail-actions">
         <div style="font-size:13px;color:#666;text-align:center;margin-bottom:4px" id="remain-info"></div>
         <button class="use-btn" id="use-btn" onclick="useTicket()">タップして使用</button>
-        <button class="action-btn primary" onclick="openShare()">友達に送る 🔗</button>
+        <button class="action-btn primary" id="share-btn" onclick="openShare()">友達に送る 🔗</button>
         <button class="action-btn" onclick="goHome()">ホームに戻る</button>
         <button onclick="reportCurrentTicket()" id="report-btn" style="border:none;background:none;font-size:11px;cursor:pointer;color:#aaa;text-align:center;padding:6px;text-decoration:underline;">⚠ このチケットを通報・ブロック</button>
       </div>
@@ -1365,6 +1365,8 @@ function openDetail(i) {
   window._viewingReceived = false;
   currentTicket = i;
   const t = tickets[i];
+  const sb = document.getElementById('share-btn');
+  if (sb) sb.style.display = '';
   const remain = t.total - t.used;
   document.getElementById('detail-title').textContent = t.title;
   document.getElementById('detail-desc').textContent = t.desc;
@@ -2705,6 +2707,8 @@ function openReceivedDetail(i) {
   currentTicket = i;
   const t = receivedTickets[i];
   if (!t) return;
+  const sb = document.getElementById('share-btn');
+  if (sb) sb.style.display = 'none';
   // 新着マーク解除
   if (t.isNew) {
     t.isNew = false;
@@ -3022,7 +3026,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v7.20 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v7.21 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
@@ -3132,8 +3136,29 @@ function handleP2PTicket(ticketData, senderName, senderId) {
     q.ticket.title === ticketData.title && q.ticket.color === ticketData.color && q.ticket.desc === ticketData.desc
   );
   if (dupReceived || dupQueued) return;
+  // 友達登録済みの相手からは確認スキップで自動受け取り
+  if (senderId && friends.some(f => f.peerId === senderId)) {
+    acceptTicketDirect(ticketData, senderName, senderId);
+    return;
+  }
   incomingQueue.push({ ticket: ticketData, senderName: senderName || '友達', senderId: senderId || '' });
   showNextIncoming();
+}
+
+function acceptTicketDirect(t, senderName, senderId) {
+  receivedTickets.unshift({
+    title: t.title, desc: t.desc || '',
+    expiry: t.expiry || '', total: t.total || 1, used: 0,
+    color: t.color || 0, imgData: t.imgData || null,
+    creatorName: t.creatorName || senderName || '',
+    creatorId: t.creatorId || senderId || '',
+    received: true, isNew: true, receivedAt: Date.now()
+  });
+  saveReceivedTickets();
+  renderReceivedTickets();
+  addNotification('ticket_received', '新しいチケット', (senderName || '友達') + 'から「' + t.title + '」を受け取りました', { from: senderName, ticketTitle: t.title, ticketDesc: t.desc || '', ticketColor: t.color || 0 });
+  showP2PBanner('🎟 ' + (senderName || '友達') + 'から「' + t.title + '」を受け取りました！');
+  updateNotifBadge();
 }
 
 function showNextIncoming() {
@@ -3382,8 +3407,8 @@ async function _sendTicketDirect() {
       if (!fullTicket.creatorName) fullTicket.creatorName = myName;
       if (!fullTicket.creatorId) fullTicket.creatorId = myPeerId || '';
       await sendViaFirebase(recipientId, fullTicket, myName, myPeerId || '');
-      addNotification('ticket_sent', 'チケット送信予約', '「' + (ticket.title || '') + '」を送信予約しました（オフライン中）', { to: recipientId });
-      finish(true, '相手はオフラインのため、サーバーに預けました。次回アプリを開いた時に届きます。');
+      addNotification('ticket_sent', 'チケット送信完了', '「' + (ticket.title || '') + '」を送信しました', { to: recipientId });
+      finish(true, 'チケットを送信しました！');
     } catch(e) {
       finish(false, '送信失敗: ' + reason);
     }
