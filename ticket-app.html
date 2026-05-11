@@ -164,7 +164,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.2 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.3 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -261,6 +261,8 @@
           <div class="color-dot" style="background:linear-gradient(135deg,#455A64,#78909C)" onclick="selectColor(11,this)"></div>
           <div class="color-dot" style="background:linear-gradient(135deg,#A0522D,#C68B5C)" onclick="selectColor(12,this)"></div>
           <div class="color-dot" style="background:linear-gradient(135deg,#00838F,#26C6DA)" onclick="selectColor(13,this)"></div>
+          <div class="color-dot" style="background:linear-gradient(135deg,#ffffff,#f0f0f5);border:1.5px solid #ddd;" onclick="selectColor(14,this)"></div>
+          <div class="color-dot" style="background:linear-gradient(135deg,#1a1a1a,#3a3a3a)" onclick="selectColor(15,this)"></div>
         </div>
       </div>
       <div>
@@ -618,8 +620,26 @@ const COLOR_GRADS = [
   ['#FF6F61','#FFA399'], // 10: コーラル
   ['#455A64','#78909C'], // 11: グレー
   ['#A0522D','#C68B5C'], // 12: ブラウン
-  ['#00838F','#26C6DA']  // 13: ターコイズ
+  ['#00838F','#26C6DA'], // 13: ターコイズ
+  ['#ffffff','#f0f0f5', '#333'], // 14: 白（文字は濃いグレー）
+  ['#1a1a1a','#3a3a3a']  // 15: 黒
 ];
+function ticketTextColor(colorIdx) {
+  const g = COLOR_GRADS[colorIdx] || COLOR_GRADS[0];
+  return g[2] || '#fff';
+}
+function applyDetailTextColor(colorIdx) {
+  const color = ticketTextColor(colorIdx);
+  const isDark = color === '#fff';
+  ['detail-title','detail-desc','detail-creator','detail-expiry'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (id === 'detail-title') el.style.color = color;
+    else if (id === 'detail-desc') el.style.color = isDark ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.7)';
+    else if (id === 'detail-creator') el.style.color = isDark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.6)';
+    else if (id === 'detail-expiry') el.style.color = isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.55)';
+  });
+}
 
 let tickets = [];
 
@@ -1319,6 +1339,7 @@ function openDetail(i) {
   document.getElementById('detail-expiry').textContent = expiryStr;
   document.getElementById('detail-color-overlay').style.background =
     `linear-gradient(135deg,${COLOR_GRADS[t.color][0]},${COLOR_GRADS[t.color][1]})`;
+  applyDetailTextColor(t.color);
   document.getElementById('remain-info').textContent = `残り ${remain} / ${t.total} 枚`;
   const bgImg = document.getElementById('detail-bg-img');
   if (bgImg) {
@@ -1823,7 +1844,7 @@ function renderTicketList() {
 
     const div = document.createElement('div');
     div.className = 'ticket-card';
-    div.style.cssText = `position:relative;margin:0;background:linear-gradient(135deg,${COLOR_GRADS[t.color][0]},${COLOR_GRADS[t.color][1]});transition:transform 0.25s ease;z-index:2;${isInactive ? 'filter:grayscale(0.5);opacity:0.65;' : ''}`;
+    div.style.cssText = `position:relative;margin:0;background:linear-gradient(135deg,${COLOR_GRADS[t.color][0]},${COLOR_GRADS[t.color][1]});color:${ticketTextColor(t.color)};transition:transform 0.25s ease;z-index:2;${isInactive ? 'filter:grayscale(0.5);opacity:0.65;' : ''}`;
     div.onclick = () => {
       if (div.dataset.swiped === '1') { resetSwipe(div); return; }
       openDetail(i);
@@ -2501,7 +2522,7 @@ function renderReceivedTickets() {
 
     const div = document.createElement('div');
     div.className = 'ticket-card';
-    div.style.cssText = `position:relative;margin:0;background:linear-gradient(135deg,${COLOR_GRADS[t.color][0]},${COLOR_GRADS[t.color][1]});transition:transform 0.25s ease;z-index:2;${isInactive ? 'filter:grayscale(0.5);opacity:0.65;' : ''}`;
+    div.style.cssText = `position:relative;margin:0;background:linear-gradient(135deg,${COLOR_GRADS[t.color][0]},${COLOR_GRADS[t.color][1]});color:${ticketTextColor(t.color)};transition:transform 0.25s ease;z-index:2;${isInactive ? 'filter:grayscale(0.5);opacity:0.65;' : ''}`;
     div.onclick = () => {
       if (div.dataset.swiped === '1') { resetSwipe(div); return; }
       openReceivedDetail(i);
@@ -2562,6 +2583,7 @@ function openReceivedDetail(i) {
   document.getElementById('detail-expiry').textContent = t.expiry ? '有効期限: ' + t.expiry : '有効期限: 無制限';
   document.getElementById('detail-color-overlay').style.background =
     `linear-gradient(135deg,${COLOR_GRADS[t.color][0]},${COLOR_GRADS[t.color][1]})`;
+  applyDetailTextColor(t.color);
   document.getElementById('remain-info').textContent = `残り ${remain} / ${t.total} 枚`;
   const bgImg = document.getElementById('detail-bg-img');
   if (bgImg) {
@@ -2865,7 +2887,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v7.2 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v7.3 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
