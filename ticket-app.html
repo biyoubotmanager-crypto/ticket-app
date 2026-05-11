@@ -164,7 +164,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v6.2 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v6.3 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -1851,7 +1851,8 @@ function renderNotifications() {
   notifications.forEach(n => {
     const row = document.createElement('div');
     const unread = !n.read;
-    row.style.cssText = 'background:' + (unread ? 'linear-gradient(135deg,#FFE5F1,#E8E2FF)' : '#fff') + ';border:1.5px solid ' + (unread ? '#d4cfff' : '#eee') + ';border-radius:14px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;';
+    const clickable = (n.type === 'ticket_received' || n.type === 'ticket_used' || n.type === 'ticket_sent');
+    row.style.cssText = 'background:' + (unread ? 'linear-gradient(135deg,#FFE5F1,#E8E2FF)' : '#fff') + ';border:1.5px solid ' + (unread ? '#d4cfff' : '#eee') + ';border-radius:14px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;' + (clickable ? 'cursor:pointer;' : '');
     const time = new Date(n.ts);
     const timeStr = time.toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
     row.innerHTML =
@@ -1861,9 +1862,37 @@ function renderNotifications() {
         (n.body ? '<div style="font-size:12px;color:#666;line-height:1.5;">' + n.body + '</div>' : '') +
         '<div style="font-size:10px;color:#aaa;margin-top:4px;">' + timeStr + '</div>' +
       '</div>' +
+      (clickable ? '<div style="font-size:14px;color:#B19CD9;align-self:center;">›</div>' : '') +
       (unread ? '<div style="width:8px;height:8px;background:#FFB6C1;border-radius:50%;margin-top:6px;"></div>' : '');
+    if (clickable) {
+      row.onclick = () => onNotificationClick(n);
+    }
     wrap.appendChild(row);
   });
+}
+
+function onNotificationClick(n) {
+  // チケット名で照合
+  const title = (n.meta && n.meta.ticketTitle) || (n.body && n.body.match(/「([^」]+)」/) || [])[1] || '';
+  if (!title) { showAlert('該当のチケットが見つかりません'); return; }
+  if (n.type === 'ticket_received') {
+    // 受け取りタブのチケットを探す
+    const idx = receivedTickets.findIndex(t => t.title === title);
+    if (idx >= 0) {
+      openReceivedDetail(idx);
+    } else {
+      showAlert('このチケットは既に削除されている可能性があります');
+    }
+  } else if (n.type === 'ticket_used' || n.type === 'ticket_sent') {
+    // 作成済みタブから探す
+    const idx = tickets.findIndex(t => t.title === title);
+    if (idx >= 0) {
+      window._viewingReceived = false;
+      openDetail(idx);
+    } else {
+      showAlert('このチケットは既に削除されている可能性があります');
+    }
+  }
 }
 
 function onClearAllNotifications() {
@@ -2573,7 +2602,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v6.2 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v6.3 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
@@ -2687,7 +2716,7 @@ function handleP2PTicket(ticketData, senderName, senderId) {
     renderReceivedTickets();
   }
   showP2PBanner('🎟 ' + senderName + 'から「' + ticketData.title + '」を受け取りました！');
-  addNotification('ticket_received', '新しいチケット', senderName + 'から「' + ticketData.title + '」が届きました', { from: senderName });
+  addNotification('ticket_received', '新しいチケット', senderName + 'から「' + ticketData.title + '」が届きました', { from: senderName, ticketTitle: ticketData.title, ticketDesc: ticketData.desc || '', ticketColor: ticketData.color || 0 });
   // 送り主が友達未登録なら登録を提案
   if (senderId && !friends.some(f => f.peerId === senderId)) {
     setTimeout(() => {
