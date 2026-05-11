@@ -139,6 +139,10 @@
   .ticket-wrap { box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
   /* 入力欄の絵文字相性 */
   ::placeholder { color: #c9b8e3; }
+  @keyframes newGlow {
+    0%, 100% { box-shadow: 0 4px 14px rgba(255,77,109,0.35), 0 0 0 0 rgba(255,182,193,0.6); }
+    50%      { box-shadow: 0 6px 22px rgba(255,77,109,0.55), 0 0 0 6px rgba(255,182,193,0); }
+  }
   @keyframes swipeDemo {
     0%, 15%   { transform: translateX(0); }
     50%, 75%  { transform: translateX(-80px); }
@@ -160,7 +164,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v6.1 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v6.2 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -2191,8 +2195,8 @@ function renderReceivedTickets() {
     const isInactive = isExpired || isUsedUp;
 
     const wrap = document.createElement('div');
-    wrap.className = 'ticket-wrap';
-    wrap.style.cssText = 'position:relative;overflow:hidden;border-radius:22px;';
+    wrap.className = 'ticket-wrap' + (t.isNew ? ' is-new' : '');
+    wrap.style.cssText = 'position:relative;overflow:hidden;border-radius:22px;' + (t.isNew ? 'animation:newGlow 1.8s ease-in-out infinite;' : '');
 
     const delBg = document.createElement('div');
     delBg.style.cssText = 'position:absolute;top:0;right:0;bottom:0;width:80px;background:#e24b4a;display:flex;align-items:center;justify-content:center;z-index:1;';
@@ -2229,8 +2233,11 @@ function renderReceivedTickets() {
     }
 
     const creatorLine = formatCreator(t);
+    const newRibbon = t.isNew ? '<div style="position:absolute;top:10px;left:-2px;background:#FF4D6D;color:#fff;font-size:10px;font-weight:800;padding:3px 10px 3px 6px;border-radius:4px 8px 8px 4px;box-shadow:0 2px 8px rgba(255,77,109,0.5);letter-spacing:0.5px;z-index:3;">✨ NEW</div>' : '';
+    const titleStyle = t.isNew ? 'ticket-title" style="padding-left:54px' : 'ticket-title';
     content.innerHTML = `
-      <div class="ticket-title">${t.title}</div>
+      ${newRibbon}
+      <div class="${titleStyle}">${t.title}</div>
       <div class="ticket-sub">${t.desc || ''}</div>
       ${creatorLine ? `<div style="font-size:10px;opacity:0.75;margin-bottom:8px;">${creatorLine}</div>` : ''}
       <div class="ticket-footer">
@@ -2251,6 +2258,11 @@ function openReceivedDetail(i) {
   currentTicket = i;
   const t = receivedTickets[i];
   if (!t) return;
+  // 新着マーク解除
+  if (t.isNew) {
+    t.isNew = false;
+    saveReceivedTickets();
+  }
   const remain = t.total - (t.used || 0);
   document.getElementById('detail-title').textContent = t.title;
   document.getElementById('detail-desc').textContent = t.desc || '';
@@ -2561,7 +2573,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v6.1 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v6.2 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
@@ -2667,7 +2679,9 @@ function handleP2PTicket(ticketData, senderName, senderId) {
       imgData: ticketData.imgData || null,
       creatorName: ticketData.creatorName || senderName || '',
       creatorId: ticketData.creatorId || senderId || '',
-      received: true
+      received: true,
+      isNew: true,
+      receivedAt: Date.now()
     });
     saveReceivedTickets();
     renderReceivedTickets();
