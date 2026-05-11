@@ -164,7 +164,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v6.3 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v6.4 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -493,6 +493,24 @@
   </div>
 
   <!-- アラートシート -->
+  <!-- チケット受信確認 -->
+  <div id="accept-wrap" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:9990;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#fff;border-radius:22px;padding:22px 20px;max-width:340px;width:100%;text-align:center;">
+      <div style="font-size:40px;margin-bottom:8px;">🎁</div>
+      <h2 style="font-size:17px;font-weight:700;color:#5b4fb8;margin-bottom:6px;">チケットが届いています</h2>
+      <p id="accept-from" style="font-size:12px;color:#888;margin-bottom:12px;"></p>
+      <div id="accept-preview" style="background:linear-gradient(135deg,#FFE5F1,#E8E2FF);border-radius:14px;padding:14px;margin-bottom:18px;">
+        <div id="accept-title" style="font-size:16px;font-weight:700;color:#5b4fb8;margin-bottom:4px;"></div>
+        <div id="accept-desc" style="font-size:12px;color:#666;"></div>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="rejectIncoming()" style="flex:1;background:#fff;border:1.5px solid #ddd;border-radius:14px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;color:#666;">拒否</button>
+        <button onclick="acceptIncoming()" style="flex:1;background:linear-gradient(135deg,#FFB6C1,#B19CD9);border:none;border-radius:14px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;color:#fff;box-shadow:0 3px 10px rgba(177,156,217,0.35);">受け取る ✨</button>
+      </div>
+      <div id="accept-counter" style="font-size:11px;color:#aaa;margin-top:10px;"></div>
+    </div>
+  </div>
+
   <div id="alert-wrap" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.45);z-index:300;align-items:flex-end;justify-content:center;">
     <div style="background:#fff;border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;">
       <p id="alert-msg" style="font-size:15px;color:#111;text-align:center;margin-bottom:20px;"></p>
@@ -2602,7 +2620,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v6.3 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v6.4 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
@@ -2693,39 +2711,78 @@ function handleTicketUsedNotice(data) {
   addNotification('ticket_used', 'チケット使用通知', who + 'があなたの「' + title + '」を使いました', { ticketTitle: title, usedBy: who });
 }
 
+let incomingQueue = [];
+let incomingShowing = false;
+
 function handleP2PTicket(ticketData, senderName, senderId) {
-  const exists = receivedTickets.some(t =>
+  // 重複チェック
+  const dupReceived = receivedTickets.some(t =>
     t.title === ticketData.title && t.color === ticketData.color && t.desc === ticketData.desc
   );
-  if (!exists) {
+  const dupQueued = incomingQueue.some(q =>
+    q.ticket.title === ticketData.title && q.ticket.color === ticketData.color && q.ticket.desc === ticketData.desc
+  );
+  if (dupReceived || dupQueued) return;
+  incomingQueue.push({ ticket: ticketData, senderName: senderName || '友達', senderId: senderId || '' });
+  showNextIncoming();
+}
+
+function showNextIncoming() {
+  if (incomingShowing) return;
+  if (incomingQueue.length === 0) return;
+  incomingShowing = true;
+  const cur = incomingQueue[0];
+  const t = cur.ticket;
+  document.getElementById('accept-from').textContent = '送り主: ' + cur.senderName;
+  document.getElementById('accept-title').textContent = t.title || '(無題)';
+  document.getElementById('accept-desc').textContent = t.desc || '';
+  const counter = document.getElementById('accept-counter');
+  if (incomingQueue.length > 1) counter.textContent = '残り ' + (incomingQueue.length - 1) + ' 件あります';
+  else counter.textContent = '';
+  document.getElementById('accept-wrap').style.display = 'flex';
+}
+
+function acceptIncoming() {
+  const cur = incomingQueue.shift();
+  document.getElementById('accept-wrap').style.display = 'none';
+  incomingShowing = false;
+  if (cur) {
+    const t = cur.ticket;
     receivedTickets.unshift({
-      title: ticketData.title,
-      desc: ticketData.desc || '',
-      expiry: ticketData.expiry || '',
-      total: ticketData.total || 1,
-      used: 0,
-      color: ticketData.color || 0,
-      imgData: ticketData.imgData || null,
-      creatorName: ticketData.creatorName || senderName || '',
-      creatorId: ticketData.creatorId || senderId || '',
-      received: true,
-      isNew: true,
-      receivedAt: Date.now()
+      title: t.title, desc: t.desc || '',
+      expiry: t.expiry || '', total: t.total || 1, used: 0,
+      color: t.color || 0, imgData: t.imgData || null,
+      creatorName: t.creatorName || cur.senderName || '',
+      creatorId: t.creatorId || cur.senderId || '',
+      received: true, isNew: true, receivedAt: Date.now()
     });
     saveReceivedTickets();
     renderReceivedTickets();
+    addNotification('ticket_received', '新しいチケット', cur.senderName + 'から「' + t.title + '」を受け取りました', { from: cur.senderName, ticketTitle: t.title, ticketDesc: t.desc || '', ticketColor: t.color || 0 });
+    showP2PBanner('🎟 ' + cur.senderName + 'から「' + t.title + '」を受け取りました！');
+    // 送り主が友達未登録なら登録を提案
+    if (cur.senderId && !friends.some(f => f.peerId === cur.senderId)) {
+      setTimeout(() => {
+        if (confirm(`「${cur.senderName}」(${cur.senderId}) を友達に追加しますか？`)) {
+          addFriend(cur.senderName, cur.senderId);
+          showAlert(`「${cur.senderName}」を友達に追加しました`);
+        }
+        setTimeout(showNextIncoming, 200);
+      }, 600);
+      return;
+    }
   }
-  showP2PBanner('🎟 ' + senderName + 'から「' + ticketData.title + '」を受け取りました！');
-  addNotification('ticket_received', '新しいチケット', senderName + 'から「' + ticketData.title + '」が届きました', { from: senderName, ticketTitle: ticketData.title, ticketDesc: ticketData.desc || '', ticketColor: ticketData.color || 0 });
-  // 送り主が友達未登録なら登録を提案
-  if (senderId && !friends.some(f => f.peerId === senderId)) {
-    setTimeout(() => {
-      if (confirm(`「${senderName}」(${senderId}) を友達に追加しますか？`)) {
-        addFriend(senderName, senderId);
-        showAlert(`「${senderName}」を友達に追加しました`);
-      }
-    }, 1500);
+  setTimeout(showNextIncoming, 200);
+}
+
+function rejectIncoming() {
+  const cur = incomingQueue.shift();
+  document.getElementById('accept-wrap').style.display = 'none';
+  incomingShowing = false;
+  if (cur) {
+    addNotification('ticket_received', '受け取り拒否', cur.senderName + 'からの「' + cur.ticket.title + '」を拒否しました', { from: cur.senderName });
   }
+  setTimeout(showNextIncoming, 200);
 }
 
 function showP2PBanner(msg) {
