@@ -160,7 +160,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v5.8 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v5.9 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -201,7 +201,13 @@
   <div class="screen active" id="home-screen">
     <div class="top-bar">
       <h1 id="home-title">🎟 チケット</h1>
-      <div style="display:flex;align-items:center;gap:10px;"><button onclick="openSettings()" style="background:none;border:none;font-size:20px;cursor:pointer;padding:2px;">👤</button></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button onclick="openNotifications()" style="background:none;border:none;font-size:20px;cursor:pointer;padding:2px;position:relative;">
+          🔔
+          <span id="notif-badge" style="display:none;position:absolute;top:-2px;right:-4px;background:#e24b4a;color:white;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;padding:0 4px;line-height:1;border:1.5px solid #fff;">0</span>
+        </button>
+        <button onclick="openSettings()" style="background:none;border:none;font-size:20px;cursor:pointer;padding:2px;">👤</button>
+      </div>
     </div>
     <div class="tab-bar">
       <div class="tab active" onclick="switchTab('received',this)">受け取り</div>
@@ -431,6 +437,16 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- 通知画面 -->
+  <div class="screen" id="notifications-screen">
+    <div class="top-bar">
+      <span class="back-btn" onclick="goHome()">← 戻る</span>
+      <h1>🔔 通知</h1>
+      <span class="back-btn" onclick="onClearAllNotifications()" style="font-size:12px;">全削除</span>
+    </div>
+    <div id="notif-list" style="padding:14px 18px;display:flex;flex-direction:column;gap:10px;"></div>
   </div>
 
   <!-- 友達一覧画面 -->
@@ -1766,6 +1782,52 @@ function saveName() {
   }
 }
 
+function openNotifications() {
+  renderNotifications();
+  showScreen('notifications-screen');
+  // 開いた瞬間に既読化
+  setTimeout(() => { markAllRead(); }, 600);
+}
+
+function renderNotifications() {
+  const wrap = document.getElementById('notif-list');
+  if (!wrap) return;
+  if (notifications.length === 0) {
+    wrap.innerHTML = '<div class="empty">📭<br>通知はありません<br><span style="font-size:12px;color:#aaa;">チケットを受け取ったり友達が増えるとここに表示されます</span></div>';
+    return;
+  }
+  wrap.innerHTML = '';
+  const iconFor = (t) => ({
+    ticket_received: '🎟',
+    ticket_sent: '✉️',
+    friend_added: '👥',
+    welcome: '✨'
+  })[t] || '🔔';
+  notifications.forEach(n => {
+    const row = document.createElement('div');
+    const unread = !n.read;
+    row.style.cssText = 'background:' + (unread ? 'linear-gradient(135deg,#FFE5F1,#E8E2FF)' : '#fff') + ';border:1.5px solid ' + (unread ? '#d4cfff' : '#eee') + ';border-radius:14px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;';
+    const time = new Date(n.ts);
+    const timeStr = time.toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+    row.innerHTML =
+      '<div style="font-size:24px;flex-shrink:0;">' + iconFor(n.type) + '</div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:13px;font-weight:700;color:#5b4fb8;margin-bottom:2px;">' + (n.title || '') + '</div>' +
+        (n.body ? '<div style="font-size:12px;color:#666;line-height:1.5;">' + n.body + '</div>' : '') +
+        '<div style="font-size:10px;color:#aaa;margin-top:4px;">' + timeStr + '</div>' +
+      '</div>' +
+      (unread ? '<div style="width:8px;height:8px;background:#FFB6C1;border-radius:50%;margin-top:6px;"></div>' : '');
+    wrap.appendChild(row);
+  });
+}
+
+function onClearAllNotifications() {
+  if (notifications.length === 0) return;
+  if (!confirm('すべての通知を削除しますか？')) return;
+  clearNotifications();
+  renderNotifications();
+}
+
 function openFriends() {
   document.getElementById('friend-name-input').value = '';
   document.getElementById('friend-id-input').value = '';
@@ -1970,6 +2032,56 @@ if (charBtnRow) {
 let receivedTickets = [];
 let friends = [];
 
+let notifications = [];
+const NOTIF_MAX = 50;
+function loadNotifications() {
+  try {
+    const raw = localStorage.getItem('notifications');
+    notifications = raw ? JSON.parse(raw) : [];
+  } catch(e) { notifications = []; }
+}
+function saveNotifications() {
+  try { localStorage.setItem('notifications', JSON.stringify(notifications.slice(0, NOTIF_MAX))); } catch(e) {}
+}
+function addNotification(type, title, body, meta) {
+  notifications.unshift({
+    id: 'n' + Date.now() + Math.random().toString(36).substr(2,4),
+    type: type,
+    title: title,
+    body: body || '',
+    meta: meta || {},
+    ts: Date.now(),
+    read: false
+  });
+  if (notifications.length > NOTIF_MAX) notifications.length = NOTIF_MAX;
+  saveNotifications();
+  updateNotifBadge();
+}
+function unreadCount() {
+  return notifications.filter(n => !n.read).length;
+}
+function markAllRead() {
+  notifications.forEach(n => n.read = true);
+  saveNotifications();
+  updateNotifBadge();
+}
+function updateNotifBadge() {
+  const badge = document.getElementById('notif-badge');
+  if (!badge) return;
+  const c = unreadCount();
+  if (c > 0) {
+    badge.textContent = c > 99 ? '99+' : c;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+function clearNotifications() {
+  notifications = [];
+  saveNotifications();
+  updateNotifBadge();
+}
+
 function loadFriends() {
   try {
     const raw = localStorage.getItem('friends');
@@ -1986,7 +2098,10 @@ function addFriend(name, peerId) {
   // 重複IDは更新
   const idx = friends.findIndex(f => f.peerId === peerId);
   if (idx >= 0) { friends[idx].name = name; }
-  else { friends.unshift({ name, peerId }); }
+  else {
+    friends.unshift({ name, peerId });
+    addNotification('friend_added', '新しい友達', name + 'を友達に追加しました', { peerId });
+  }
   saveFriends();
   return true;
 }
@@ -2405,7 +2520,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v5.8 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v5.9 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
@@ -2508,6 +2623,7 @@ function handleP2PTicket(ticketData, senderName, senderId) {
     renderReceivedTickets();
   }
   showP2PBanner('🎟 ' + senderName + 'から「' + ticketData.title + '」を受け取りました！');
+  addNotification('ticket_received', '新しいチケット', senderName + 'から「' + ticketData.title + '」が届きました', { from: senderName });
   // 送り主が友達未登録なら登録を提案
   if (senderId && !friends.some(f => f.peerId === senderId)) {
     setTimeout(() => {
@@ -2677,6 +2793,7 @@ async function _sendTicketDirect() {
       if (!fullTicket.creatorName) fullTicket.creatorName = myName;
       if (!fullTicket.creatorId) fullTicket.creatorId = myPeerId || '';
       await sendViaFirebase(recipientId, fullTicket, myName, myPeerId || '');
+      addNotification('ticket_sent', 'チケット送信予約', '「' + (ticket.title || '') + '」を送信予約しました（オフライン中）', { to: recipientId });
       finish(true, '相手はオフラインのため、サーバーに預けました。次回アプリを開いた時に届きます。');
     } catch(e) {
       finish(false, '送信失敗: ' + reason);
@@ -2707,6 +2824,7 @@ async function _sendTicketDirect() {
     }
     setTimeout(() => {
       try { conn.close(); } catch(e) {}
+      addNotification('ticket_sent', 'チケット送信完了', '「' + (ticket.title || '') + '」を送信しました', { to: recipientId });
       finish(true, 'チケットを送信しました！');
     }, 4000);
   });
@@ -2726,6 +2844,8 @@ async function _sendTicketDirect() {
 loadTickets();
 loadReceivedTickets();
 loadFriends();
+loadNotifications();
+updateNotifBadge();
 loadName();
 checkUrlTicket();
 // 前回のタブ状態を復元（タブ順: [0]受け取り, [1]作成済み, [2]ゴミ箱）
