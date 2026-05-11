@@ -164,7 +164,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v6.6 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v6.7 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -2156,18 +2156,23 @@ function resetAll() {
 
 
 function createSampleTickets() {
-  // 1週間後の日付を計算
-  const weekLater = new Date();
-  weekLater.setDate(weekLater.getDate() + 7);
-  const weekStr = weekLater.toISOString().slice(0, 10);
   tickets = [];
   saveTickets();
-  // 初期サンプルは「しあわせのひつぜ」からの受け取りチケットとして配置
+  // 初期サンプルは「しあわせのひつぜ」からの受け取りチケット1枚
   const sender = 'しあわせのひつぜ';
   receivedTickets = [
-    { title:'映画チケット',    desc:'シネコンで使用可',     expiry: weekStr, total:2, used:0, color:0, imgData: SAMPLE_IMGS.nasu, creatorName: sender, creatorId: '', received: true },
-    { title:'ランチおごり券',  desc:'好きなランチを奢ります', expiry:'',       total:3, used:0, color:1, imgData: SAMPLE_IMGS.robo, creatorName: sender, creatorId: '', received: true },
-    { title:'誕生日スペシャル', desc:'お誕生日おめでとう！',   expiry: weekStr, total:1, used:0, color:2, imgData: SAMPLE_IMGS.bana, creatorName: sender, creatorId: '', received: true },
+    {
+      title: 'ありがとめ★',
+      desc: 'このアプリを使ってくれたにんげんどもに感謝の気持ち表すめ★\nありがとめ★',
+      expiry: '',
+      total: 1, used: 0,
+      color: 1,
+      imgData: SAMPLE_IMGS.robo,
+      creatorName: sender, creatorId: '',
+      received: true,
+      isNew: true,
+      receivedAt: Date.now()
+    },
   ];
   saveReceivedTickets();
 }
@@ -2784,7 +2789,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v6.6 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v6.7 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
