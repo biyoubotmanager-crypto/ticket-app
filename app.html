@@ -160,7 +160,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v5.9 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v6.0 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -1298,6 +1298,44 @@ function confirmUse() {
     if (btn) { btn.disabled = true; btn.style.opacity = '0.4'; btn.textContent = '使用済み'; }
   }
   if (window._viewingReceived) saveReceivedTickets(); else saveTickets();
+  // 作成者に使用通知を送る
+  notifyTicketUsed(t).catch(e => console.error('[notify-used]', e));
+}
+
+async function notifyTicketUsed(ticket) {
+  const creatorId = ticket && ticket.creatorId;
+  if (!creatorId || creatorId === myPeerId) return;
+  const payload = {
+    type: 'ticket-used',
+    ticketTitle: ticket.title || '',
+    usedBy: myName || '誰か',
+    usedById: myPeerId || '',
+    ts: Date.now()
+  };
+  // 1) P2P即時送信を試みる
+  if (peer && peer.open && !peer.disconnected) {
+    try {
+      const ok = await new Promise((resolve) => {
+        const conn = peer.connect(creatorId, { reliable: true });
+        const t = setTimeout(() => { try{conn.close();}catch(e){}; resolve(false); }, 6000);
+        conn.on('open', () => {
+          clearTimeout(t);
+          try { conn.send(payload); } catch(e) {}
+          setTimeout(() => { try{conn.close();}catch(e){}; resolve(true); }, 1500);
+        });
+        conn.on('error', () => { clearTimeout(t); resolve(false); });
+      });
+      if (ok) return;
+    } catch(e) {}
+  }
+  // 2) オフライン → Firebase経由
+  try {
+    await fetch(FIREBASE_DB + '/inbox/' + encodeURIComponent(creatorId) + '.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch(e) {}
 }
 
 function showAlert(msg) {
@@ -1800,6 +1838,7 @@ function renderNotifications() {
   const iconFor = (t) => ({
     ticket_received: '🎟',
     ticket_sent: '✉️',
+    ticket_used: '🎉',
     friend_added: '👥',
     welcome: '✨'
   })[t] || '🔔';
@@ -2520,7 +2559,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v5.9 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v6.0 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
@@ -2547,6 +2586,8 @@ function attachPeerHandlers(p) {
       console.log('[P2P] data received', data && data.type);
       if (data && data.type === 'ticket') {
         handleP2PTicket(data.ticket, data.senderName || '友達', data.senderId || '');
+      } else if (data && data.type === 'ticket-used') {
+        handleTicketUsedNotice(data);
       }
     });
     conn.on('error', (e) => console.error('[P2P] conn error', e));
@@ -2600,6 +2641,13 @@ function formatCreator(t) {
   if (!name && !id) return '';
   if (name && id) return '作成: ' + name + ' (' + id + ')';
   return '作成: ' + (name || id);
+}
+
+function handleTicketUsedNotice(data) {
+  const title = data.ticketTitle || 'チケット';
+  const who = data.usedBy || '誰か';
+  showP2PBanner('🎉 ' + who + 'があなたの「' + title + '」を使いました！');
+  addNotification('ticket_used', 'チケット使用通知', who + 'があなたの「' + title + '」を使いました', { ticketTitle: title, usedBy: who });
 }
 
 function handleP2PTicket(ticketData, senderName, senderId) {
@@ -2702,11 +2750,16 @@ async function fetchOfflineTickets() {
       if (msg && msg.ticket) {
         handleP2PTicket(msg.ticket, msg.senderName || '友達', msg.senderId || '');
         processed++;
-        // 受信完了したら削除
-        try {
-          await fetch(inboxItemUrl(myPeerId, key), { method: 'DELETE' });
-        } catch(e) {}
+      } else if (msg && msg.type === 'ticket-used') {
+        handleTicketUsedNotice(msg);
+        processed++;
+      } else {
+        continue;
       }
+      // 受信完了したら削除
+      try {
+        await fetch(inboxItemUrl(myPeerId, key), { method: 'DELETE' });
+      } catch(e) {}
     }
     if (processed > 0) console.log('[firebase] processed', processed, 'offline tickets');
   } catch(e) {
