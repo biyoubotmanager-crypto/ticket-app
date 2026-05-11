@@ -23,7 +23,9 @@
   body {
     background: linear-gradient(135deg, #FFE5F1 0%, #E8E2FF 50%, #DCEEFF 100%);
     background-attachment: fixed;
-    display: flex; justify-content: center; padding: 20px; min-height: 100vh;
+    display: flex; justify-content: center;
+    padding: calc(env(safe-area-inset-top, 0px) + 36px) max(env(safe-area-inset-right, 0px), 12px) max(env(safe-area-inset-bottom, 0px), 12px) max(env(safe-area-inset-left, 0px), 12px);
+    min-height: 100vh;
     position: relative;
   }
   .app, .screen { max-width: 100%; }
@@ -158,7 +160,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:6px 12px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v5.7 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v5.8 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -178,7 +180,7 @@
 </div>
 
 <!-- P2P受信通知バナー -->
-<div id="p2p-banner" style="display:none;position:fixed;top:30px;left:0;right:0;z-index:9999;background:#7F77DD;color:white;padding:14px 20px;font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,0.2);align-items:center;justify-content:space-between;">
+<div id="p2p-banner" style="display:none;position:fixed;top:calc(env(safe-area-inset-top, 0px) + 30px);left:0;right:0;z-index:9999;background:#7F77DD;color:white;padding:14px 20px;font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,0.2);align-items:center;justify-content:space-between;">
   <span id="p2p-banner-text"></span>
   <span onclick="dismissP2PBanner()" style="cursor:pointer;opacity:0.8;padding-left:12px;">✕</span>
 </div>
@@ -2403,7 +2405,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v5.7 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v5.8 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
