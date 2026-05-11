@@ -58,7 +58,7 @@
   .tc-img { position: absolute; top: 8px; right: 8px; bottom: 8px; height: calc(100% - 16px); width: 48%; border-radius: 18px; opacity: 0.95; object-fit: contain; object-position: right center; pointer-events: none; }
   .tc-content { position: relative; z-index: 1; max-width: 50%; min-height: calc(170px - 30px); display: flex; flex-direction: column; justify-content: space-between; text-shadow: 0 1px 2px rgba(0,0,0,0.18); }
   .ticket-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; letter-spacing: 0.3px; line-height: 1.3; }
-  .ticket-sub { font-size: 13px; opacity: 0.95; margin-bottom: 8px; line-height: 1.4; }
+  .ticket-sub { font-size: 13px; opacity: 0.95; margin-bottom: 8px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
   .ticket-footer { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: auto; }
   .ticket-badge { font-size: 11px; font-weight: 700; background: rgba(255,255,255,0.35); padding: 4px 10px; border-radius: 20px; backdrop-filter: blur(4px); }
   .fab {
@@ -114,7 +114,7 @@
   canvas.bt-bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 20px; opacity: 0.45; }
   .bt-content { position: relative; z-index: 2; max-width: 50%; min-height: calc(170px - 30px); display: flex; flex-direction: column; text-shadow: 0 1px 2px rgba(0,0,0,0.18); }
   .bt-title { font-size: 18px; font-weight: 700; color: white; margin-bottom: 6px; letter-spacing: 0.3px; line-height: 1.3; }
-  .bt-sub { font-size: 13px; color: rgba(255,255,255,0.95); margin-bottom: 8px; line-height: 1.4; }
+  .bt-sub { font-size: 13px; color: rgba(255,255,255,0.95); margin-bottom: 8px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
   .qr-box { background: white; border-radius: 12px; padding: 10px; display: inline-block; margin-bottom: 12px; }
   .use-btn { background: linear-gradient(135deg, #FFB6C1 0%, #B19CD9 100%); border: none; border-radius: 18px; padding: 15px 0; color: #fff; font-size: 17px; font-weight: 700; cursor: pointer; width: 100%; display: block; box-shadow: 0 4px 14px rgba(177,156,217,0.35); transition: transform 0.15s; letter-spacing: 0.5px; }
   .use-btn:active { transform: scale(0.98); }
@@ -164,7 +164,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v6.8 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v6.9 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -2829,7 +2829,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v6.8 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v6.9 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
