@@ -46,17 +46,18 @@
     width: 100%; max-width: 390px;
     margin: 0 auto;
     background: rgba(255,255,255,0.92); backdrop-filter: blur(10px);
-    border-radius: 32px; overflow: hidden;
+    border-radius: 32px;
     box-shadow: 0 8px 40px rgba(127,119,221,0.18), 0 2px 8px rgba(255,182,193,0.15);
     position: relative; z-index: 1;
+    clip-path: inset(0 round 32px);
   }
   .screen { display: none; flex-direction: column; }
   .screen.active { display: flex; }
-  .top-bar { padding: 18px 22px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(127,119,221,0.1); }
-  .top-bar h1 { font-size: 18px; font-weight: 700; color: #5b4fb8; letter-spacing: 0.5px; }
+  .top-bar { padding: 18px 22px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(127,119,221,0.1); position: sticky; top: calc(env(safe-area-inset-top, 0px) + 28px); background: rgba(255,255,255,0.95); backdrop-filter: blur(8px); z-index: 50; }
+.top-bar h1 { font-size: 18px; font-weight: 700; color: #5b4fb8; letter-spacing: 0.5px; }
   .back-btn { font-size: 14px; color: #B19CD9; cursor: pointer; font-weight: 600; transition: transform 0.15s; }
   .back-btn:active { transform: scale(0.94); }
-  .tab-bar { display: flex; padding: 10px 14px 6px; gap: 6px; }
+  .tab-bar { display: flex; padding: 10px 14px 6px; gap: 6px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 80px); background: rgba(255,255,255,0.95); backdrop-filter: blur(8px); z-index: 49; }
   .tab { flex: 1; text-align: center; padding: 9px 0; font-size: 13px; color: #aaa; cursor: pointer; border-radius: 18px; font-weight: 600; transition: all 0.2s; background: transparent; }
   .tab.active { color: #fff; background: linear-gradient(135deg, #FFB6C1 0%, #B19CD9 100%); box-shadow: 0 3px 10px rgba(177,156,217,0.35); }
   .ticket-grid { padding: 16px 18px 24px; display: flex; flex-direction: column; gap: 14px; }
@@ -171,7 +172,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.6 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.7 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -2894,7 +2895,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v7.6 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v7.7 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
