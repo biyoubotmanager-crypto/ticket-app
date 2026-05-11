@@ -166,7 +166,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.15 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.16 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -2261,9 +2261,8 @@ function resetAll() {
 function createSampleTickets() {
   tickets = [];
   saveTickets();
-  // 初期サンプルは「しあわせのひつぜ」からの受け取りチケット1枚
+  // 初期サンプルは「しあわせのひつぜ」からの受け取りチケット1枚（透過画像）
   const sender = 'しあわせのひつぜ';
-  const sampleImg = 'data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAA0JCgsKCA0LCgsODg0PEyAVExISEyccHhcgLikxMC4pLSwzOko+MzZGNywtQFdBRkxOUlNSMj5aYVpQYEpRUk//2wBDAQ4ODhMREyYVFSZPNS01T09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0//wAARCACCAGYDASIAAhEBAxEB/8QAGwABAAMBAQEBAAAAAAAAAAAAAAMEBQYCAQf/xAAwEAACAgIABQMCBgICAwAAAAABAgADBBEFEiExQRMiUWFxBhQygZGhI0IWsTNS4f/EABoBAAIDAQEAAAAAAAAAAAAAAAACAQMEBQb/xAAmEQACAgEEAgIBBQAAAAAAAAAAAQIDEQQSITEFEyJRMiNBgeHw/9oADAMBAAIRAxEAPwD9OiIgAiCdd5HZcleuZgN9B1gBJEo53EUw7KldWIsJ6jxqUsDjCW5DJYwHMx5NDx9ZG5dFsaZyjuS4NvY3rcTMbMDZG1baLsEfWXcew2KDogH5lFWqrtm4RfKFlBxWWTRETQIIiIAIiIACdDcr/m62D+mQxToQsnI2CJzIvbhnFMqtgSrA2Vj5B/8Av/UhvBbVX7MpdljK4u13CrL8fasjDmHchd6M857Ll4VVldoGQg51X/213H8TxjYb5V/5isIKMgEXJ9ex19574bwfIozFa6xWSr9JHdvvE5Zr/Sh08Nc/0Z/EstsvFw2VwBphvwW0Nf1Ia1BGOq1n17H510P9eo0P3P8AU644GMavSNFRr3zcvINb+dSZakUAAa10GvEnYKtYox2xiULMFrbWcOV2o/SvkS5SDVWqu2yBr4n3JvTGoe1zpUGzOJs/E2RxLJ9LHUIiPsEdzqUTVdDdiXLEpot1HXSO5LjW4Rw42Jy2f+I8N8c0Us72jXuA6Aia/B8hrMBL7HB34HiMtRmzalxjORLNNZXDdJYNSJ8Vgw2J9mgziIiACUeIcMozwvqhgyHasp0RL0QJjJxeUQ4uOmLStVY0q9vMmiQ25FdZ0zCLKUYrLeEHMmTE6GzIfWBPQyB8tWflU7iooSSAInsT/FjKP2ZP4pzGq4VbWB7nHifneFkNi4WTaCedvYv795+p8Qwa85QpPKw8zlOK/hhq6yigtWx5uZB5+swamUs/JcHS0l8YR2fbOd4blomvU5u++nnXg/zN3FyLzwyw12muprui/wB95h28Fysc7q/yj4H6h+0sX2OEo4fRssh2+uu2PiVOyMsKPOTsuULUsf7B+k8Gyky+H12ICOmjs76iX5m8Bw2wuG1Uv+sDbD6maU68OIo8tdt9ktvWRERGKhERACHLuFFDOfAnJ3cTYXl3V2HdiBvU6DjhIwm122JzFbWelzVAMeZgyk95wvLTbmoPo26WK2tms+QoqpyFPt3o/vJMLOrZSecdO/WZToF4RXiOds2l6S5hYtNYBCjct8ZmVb+kx51pl/DzlvLHf+xlo5NbW+mGBI7iUBiUmznAIPnR1JHwQ1otpf037HpsH7zpbGVOCJ8vBx8sAsOVh5AmfXwvHw84XFFss/1JHUS7amRQy2BjYutMoHb6iV0yxcbbyCBWD0P0nM10VUt6WJDVuWMJ8GlVe2hzD+JaRuYbnPl8qtRezoUPdB3UTYxH5hJ8frZzn65/wVW1pLKLURE7BnEREAK+dQMjGes+R3+JxV9N+NksvMFO+qt8/Sd6e0xc+iq/JBtQNya1uYNbpVclJPDNFFuzg5zFWyzOZ7X5lrUBdDQ695HjcXyv+VHhpqPo8uweXxykk7++hNXMq9HJLhdI6gb+CIocc2+m/mXaatV1qKNLbnyaiSY2LVWzudKoJJ+AJnN6jlTVd6eu/t2DLZK2VtW/VWGj9RNGRJLJHwrjOLxil7MUtpDohh114P8ARlGq6tMzKxruxJBH0Ml4RwrD4NXbXhKQLW5mLHZnnK4W1175i7O/Cnr0nP8AI1udPHaCtbfyPbJXVUwS1rGf2jc1cAdNfGhMjFqDWBakdn+X8TfxaRTUB3Pk/JnO8ZROVvsa4RGoklHH7k8RE9EYhERADxceWsn46zLoINjO/Uk9Jq2DaGY1pFVpCnoCZXYPAtXCl11aAVPTrKFvCf8AJzUW8qnwRuV78h/zJDt7ehWamK7NXtj37Tnw1Llc6sdGnDhFSTKTYOVXrlKsPoZ7bHyK057GRVA6nfaaYOh1mBxrItyr2wcdwoC7ZidDfxNUrNqyyYTlJ4Zfp9AFTdkK2zoKJqKFCjl1qclVh5b3VsGQa/Wp7KR0/wCpv8MyGvoKvoPWeVoOabROoglynku8qq2wACTJ1/SJAdEg77SwOw1Lq1wY5CIiWCiIiAHxxtSJg5VbDLIPbqfvN+VcykNWSBs9xFksoaLwzGSqqxveoJ7dZ8tza8XlqqI2G0R8CB7X6GUs3DtvyPVq5R7eu/JlVUYb8yJuc9nw7NtchbKWdG3oTlxRfkZ5yKrEdWO2XeiD0m9hL6eGK3UKxHUCczxPBtpy2enm5Sd+0zNqoKXC6LacyjiXDZtV42YB0QaLhj7h95r4acllhPKCwBIBnHYjZTarUXE/c9Z1fDKjjUas/wDIx20r07wtiXBZbDHLZfRuY68y4O0hprA9xHU95NOlBYRlk8sRERhRERABBAI0YiAGVxjCL4zPSv8AlHUEd5hY2TkvaKRQWcnXQa/mdkQCNGeRWoPn+YrgmWxswsNZMn8lcnQMjfvqZuabKs30rKgfaCDvvOqkNuNVd+tFP3G4rqQQsw/kjD4dXZbkN7FVVHcdf2m3Xjqp5tdfnzPdVKVDSKAPoNSSTGCRE57nx0ANDQiIjlYiIgAiIgAiIgAiIgAiIgAiIgAiIgAiIgB//9k=';
   receivedTickets = [
     {
       title: 'ありがとめ★チケット',
@@ -2271,7 +2270,7 @@ function createSampleTickets() {
       expiry: '',
       total: 1, used: 0,
       color: 0,
-      imgData: sampleImg,
+      imgData: SAMPLE_IMGS.robo,
       creatorName: sender, creatorId: '',
       received: true,
       isNew: true,
@@ -2894,7 +2893,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v7.15 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v7.16 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
