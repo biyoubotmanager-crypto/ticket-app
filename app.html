@@ -7,6 +7,9 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<!-- Firebase Cloud Messaging -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js"></script>
 <!-- Google AdSense -->
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3279301190747422" crossorigin="anonymous"></script>
 <meta name="google-adsense-account" content="ca-pub-3279301190747422">
@@ -167,6 +170,19 @@
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
 <div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.17 接続中...</div>
+<!-- ホーム画面追加ガイド -->
+<div id="install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9997;background:linear-gradient(135deg,#FFE5F1,#E8E2FF);padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 14px);box-shadow:0 -4px 20px rgba(177,156,217,0.25);">
+  <div style="max-width:390px;margin:0 auto;display:flex;gap:10px;align-items:center;">
+    <div style="font-size:32px;">📱</div>
+    <div style="flex:1;font-size:12px;color:#5b4fb8;line-height:1.5;">
+      <strong>ホーム画面に追加すると通知が届くようになります！</strong><br>
+      <span id="install-howto" style="color:#7b6bb0;"></span>
+    </div>
+    <button onclick="dismissInstallBanner()" style="background:#fff;border:1.5px solid #d4cfff;color:#7F77DD;border-radius:8px;padding:6px 10px;font-size:11px;cursor:pointer;font-weight:600;">後で</button>
+    <button id="install-action-btn" style="display:none;background:linear-gradient(135deg,#FFB6C1,#B19CD9);color:white;border:none;border-radius:8px;padding:6px 10px;font-size:11px;cursor:pointer;font-weight:700;">追加</button>
+  </div>
+</div>
+
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -453,6 +469,7 @@
       <button onclick="openReceiveCamera()" style="border:none;border-radius:18px;padding:15px;font-size:15px;cursor:pointer;background:linear-gradient(135deg,#FFB6C1,#B19CD9);color:white;text-align:center;font-weight:700;letter-spacing:0.5px;box-shadow:0 4px 14px rgba(177,156,217,0.35);">📷 友達のQRを読み取る</button>
       <button onclick="openFriends()" style="border:1.5px solid #f0e6ff;border-radius:16px;padding:14px;font-size:14px;cursor:pointer;background:#fff;color:#5b4fb8;text-align:center;font-weight:700;">👥 友達を管理する</button>
       <button onclick="openSafety()" style="border:1.5px solid #f0e6ff;border-radius:16px;padding:14px;font-size:14px;cursor:pointer;background:#fff;color:#5b4fb8;text-align:center;font-weight:700;">🛡 受信設定・ブロック</button>
+      <button onclick="requestPushPermission()" style="border:1.5px solid #f0e6ff;border-radius:16px;padding:14px;font-size:14px;cursor:pointer;background:#fff;color:#5b4fb8;text-align:center;font-weight:700;">🔔 通知を受け取る</button>
       <div style="display:flex;gap:8px;margin-top:4px;">
         <a href="privacy.html" target="_blank" style="flex:1;text-align:center;border:1.5px solid #f0e6ff;border-radius:14px;padding:10px;font-size:12px;color:#7F77DD;text-decoration:none;font-weight:600;">📄 プライバシーポリシー</a>
         <a href="terms.html" target="_blank" style="flex:1;text-align:center;border:1.5px solid #f0e6ff;border-radius:14px;padding:10px;font-size:12px;color:#7F77DD;text-decoration:none;font-weight:600;">📜 利用規約</a>
@@ -2188,6 +2205,51 @@ function renderShareFriendsList() {
   });
 }
 
+// ホーム画面追加ガイド
+let _installPromptEvent = null;
+function dismissInstallBanner() {
+  const b = document.getElementById('install-banner');
+  if (b) b.style.display = 'none';
+  try { localStorage.setItem('installBannerDismissed', '1'); } catch(e) {}
+}
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+function isIos() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+function showInstallBannerIfNeeded() {
+  if (isStandalone()) return; // 既にPWAとして起動中なら表示不要
+  if (localStorage.getItem('installBannerDismissed') === '1') return;
+  const banner = document.getElementById('install-banner');
+  const howto = document.getElementById('install-howto');
+  const btn = document.getElementById('install-action-btn');
+  if (!banner || !howto) return;
+  if (isIos()) {
+    howto.innerHTML = '画面下の <strong>共有ボタン（□↑）</strong> →「ホーム画面に追加」';
+    btn.style.display = 'none';
+  } else if (_installPromptEvent) {
+    howto.innerHTML = '「追加」を押すとインストールできます';
+    btn.style.display = 'inline-block';
+    btn.onclick = () => {
+      _installPromptEvent.prompt();
+      _installPromptEvent.userChoice.finally(() => {
+        _installPromptEvent = null;
+        dismissInstallBanner();
+      });
+    };
+  } else {
+    howto.innerHTML = 'ブラウザのメニューから「ホーム画面に追加」を選択';
+    btn.style.display = 'none';
+  }
+  // 開いてすぐは出さず、少し操作してから出す
+  setTimeout(() => { banner.style.display = 'block'; }, 8000);
+}
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  _installPromptEvent = e;
+});
+
 function dismissSwipeGuide() {
   const g = document.getElementById('swipe-guide');
   if (g) g.style.display = 'none';
@@ -2430,15 +2492,21 @@ function markAllRead() {
   updateNotifBadge();
 }
 function updateNotifBadge() {
-  const badge = document.getElementById('notif-badge');
-  if (!badge) return;
   const c = unreadCount();
-  if (c > 0) {
-    badge.textContent = c > 99 ? '99+' : c;
-    badge.style.display = 'flex';
-  } else {
-    badge.style.display = 'none';
+  const badge = document.getElementById('notif-badge');
+  if (badge) {
+    if (c > 0) {
+      badge.textContent = c > 99 ? '99+' : c;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
   }
+  // OSアイコンのバッジ（Android Chrome/PCのPWAで動く）
+  try {
+    if (c > 0 && 'setAppBadge' in navigator) navigator.setAppBadge(c).catch(()=>{});
+    else if ('clearAppBadge' in navigator) navigator.clearAppBadge().catch(()=>{});
+  } catch(e) {}
 }
 function clearNotifications() {
   notifications = [];
@@ -3326,7 +3394,80 @@ checkUrlTicket();
     renderTicketList();
   }
 })();
+// ============================================================
+// FCMプッシュ通知
+// ============================================================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBXmDgTqRl267LFhDwTQquiUq1ehFMW8X4",
+  authDomain: "ticket-app-bb78.firebaseapp.com",
+  databaseURL: "https://ticket-app-bb78-default-rtdb.firebaseio.com",
+  projectId: "ticket-app-bb78",
+  storageBucket: "ticket-app-bb78.firebasestorage.app",
+  messagingSenderId: "459666458556",
+  appId: "1:459666458556:web:74e0ce4dd437d682a84db9"
+};
+const FCM_VAPID_KEY = "BGwdSaWXttJQ-IH_EN38uhXKY2DbdQp7E_esm5YuAQarY9z0jIdKnfdBMHrlV7pkwkKhPpIrxPmFye-RKIeKvek";
+
+let _fcmMessaging = null;
+async function setupFCM() {
+  if (typeof firebase === 'undefined' || !firebase.messaging) return;
+  if (!('serviceWorker' in navigator) || !('Notification' in window)) return;
+  try {
+    if (!firebase.apps || firebase.apps.length === 0) {
+      firebase.initializeApp(FIREBASE_CONFIG);
+    }
+    const swReg = await navigator.serviceWorker.register('firebase-messaging-sw.js', { scope: './' });
+    _fcmMessaging = firebase.messaging();
+
+    if (Notification.permission === 'default') {
+      // 初回起動時すぐは要求しない。プロフィール画面の通知ONボタンで要求する流れ
+    } else if (Notification.permission === 'granted') {
+      await fetchAndSaveFCMToken(swReg);
+    }
+
+    // フォアグラウンドでのメッセージ受信
+    _fcmMessaging.onMessage((payload) => {
+      const title = (payload.notification && payload.notification.title) || '🎟 新着';
+      const body = (payload.notification && payload.notification.body) || '';
+      showP2PBanner(title + ' ' + body);
+    });
+  } catch(e) {
+    console.error('[FCM] setup error', e);
+  }
+}
+
+async function fetchAndSaveFCMToken(swReg) {
+  if (!_fcmMessaging) return;
+  try {
+    const token = await _fcmMessaging.getToken({ vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: swReg });
+    if (token && myPeerId) {
+      const url = FIREBASE_DB + '/tokens/' + encodeURIComponent(myPeerId) + '.json';
+      await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, ts: Date.now() }) });
+      console.log('[FCM] token saved');
+    }
+  } catch(e) {
+    console.error('[FCM] token error', e);
+  }
+}
+
+async function requestPushPermission() {
+  if (!('Notification' in window)) {
+    showAlert('このブラウザは通知非対応です');
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    const swReg = await navigator.serviceWorker.getRegistration() || await navigator.serviceWorker.register('firebase-messaging-sw.js', { scope: './' });
+    await fetchAndSaveFCMToken(swReg);
+    showAlert('通知をONにしました ✨');
+  } else {
+    showAlert('通知が許可されませんでした');
+  }
+}
+
 initPeer();
+setupFCM();
+showInstallBannerIfNeeded();
 // 30秒ごとにオフライン受信箱を確認（バックグラウンド時の取りこぼし防止）
 setInterval(() => { if (myPeerId) fetchOfflineTickets(); }, 30000);
 // 画面復帰時にも即チェック
