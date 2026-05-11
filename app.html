@@ -164,7 +164,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.1 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.2 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -290,10 +290,21 @@
           <div id="draw-panel" class="brush-row">
             <div class="brush-color selected" style="background:#7F77DD" onclick="setBrushColor('#7F77DD',this)"></div>
             <div class="brush-color" style="background:#D4537E" onclick="setBrushColor('#D4537E',this)"></div>
-            <div class="brush-color" style="background:#1D9E75" onclick="setBrushColor('#1D9E75',this)"></div>
-            <div class="brush-color" style="background:#EF9F27" onclick="setBrushColor('#EF9F27',this)"></div>
-            <div class="brush-color" style="background:#378ADD" onclick="setBrushColor('#378ADD',this)"></div>
+            <div class="brush-color" style="background:#FF6FA5" onclick="setBrushColor('#FF6FA5',this)"></div>
             <div class="brush-color" style="background:#E24B4A" onclick="setBrushColor('#E24B4A',this)"></div>
+            <div class="brush-color" style="background:#FF6F61" onclick="setBrushColor('#FF6F61',this)"></div>
+            <div class="brush-color" style="background:#EF9F27" onclick="setBrushColor('#EF9F27',this)"></div>
+            <div class="brush-color" style="background:#FFC93C" onclick="setBrushColor('#FFC93C',this)"></div>
+            <div class="brush-color" style="background:#A0522D" onclick="setBrushColor('#A0522D',this)"></div>
+            <div class="brush-color" style="background:#1D9E75" onclick="setBrushColor('#1D9E75',this)"></div>
+            <div class="brush-color" style="background:#7FCB81" onclick="setBrushColor('#7FCB81',this)"></div>
+            <div class="brush-color" style="background:#4FC3D9" onclick="setBrushColor('#4FC3D9',this)"></div>
+            <div class="brush-color" style="background:#378ADD" onclick="setBrushColor('#378ADD',this)"></div>
+            <div class="brush-color" style="background:#1A3A6B" onclick="setBrushColor('#1A3A6B',this)"></div>
+            <div class="brush-color" style="background:#B19CD9" onclick="setBrushColor('#B19CD9',this)"></div>
+            <div class="brush-color" style="background:#5b4fb8" onclick="setBrushColor('#5b4fb8',this)"></div>
+            <div class="brush-color" style="background:#666" onclick="setBrushColor('#666666',this)"></div>
+            <div class="brush-color" style="background:#000" onclick="setBrushColor('#000000',this)"></div>
             <div class="brush-color" style="background:#fff;border:1px solid #ccc" onclick="setBrushColor('#ffffff',this)"></div>
             <div style="font-size:12px;color:#666;display:flex;align-items:center;gap:6px">太さ<input type="range" min="2" max="20" value="6" step="1" style="width:60px" oninput="brushSize=+this.value"/></div>
             <button onclick="undoStroke()" id="undo-btn" style="font-size:12px;padding:6px 10px;border:1.5px solid #f0e6ff;border-radius:10px;background:#fff;color:#5b4fb8;cursor:pointer;font-weight:600;">↶ 戻す</button>
@@ -2854,7 +2865,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v7.1 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v7.2 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
