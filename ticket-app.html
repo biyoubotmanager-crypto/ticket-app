@@ -2495,12 +2495,25 @@ function loadNotifications() {
   try {
     const raw = localStorage.getItem('notifications');
     notifications = raw ? JSON.parse(raw) : [];
+    // 既存の自分発アクションを既読化（バッジ過剰防止のマイグレーション）
+    const selfActionTypes = ['ticket_sent', 'friend_added', 'blocked_msg'];
+    let migrated = false;
+    notifications.forEach(n => {
+      if (n && selfActionTypes.indexOf(n.type) !== -1 && n.read !== true) {
+        n.read = true;
+        migrated = true;
+      }
+    });
+    if (migrated) saveNotifications();
   } catch(e) { notifications = []; }
 }
 function saveNotifications() {
   try { localStorage.setItem('notifications', JSON.stringify(notifications.slice(0, NOTIF_MAX))); } catch(e) {}
 }
 function addNotification(type, title, body, meta) {
+  // 自分発のアクションは最初から既読扱いにする（バッジに数えない）
+  const selfActionTypes = ['ticket_sent', 'friend_added', 'blocked_msg'];
+  const isSelf = selfActionTypes.indexOf(type) !== -1;
   notifications.unshift({
     id: 'n' + Date.now() + Math.random().toString(36).substr(2,4),
     type: type,
@@ -2508,7 +2521,7 @@ function addNotification(type, title, body, meta) {
     body: body || '',
     meta: meta || {},
     ts: Date.now(),
-    read: false
+    read: isSelf
   });
   if (notifications.length > NOTIF_MAX) notifications.length = NOTIF_MAX;
   saveNotifications();
