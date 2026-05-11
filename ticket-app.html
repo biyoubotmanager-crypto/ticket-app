@@ -164,7 +164,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v6.9 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.0 接続中...</div>
 <!-- 初回ガイド: スワイプ削除 -->
 <div id="swipe-guide" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:340px;width:100%;text-align:center;">
@@ -1212,6 +1212,14 @@ function selectColor(i, el) {
   selectedColor = i;
   document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
   el.classList.add('selected');
+  updateCanvasBg();
+}
+
+function updateCanvasBg() {
+  const wrap = document.querySelector('.canvas-wrap');
+  if (!wrap) return;
+  const g = COLOR_GRADS[selectedColor] || COLOR_GRADS[0];
+  wrap.style.background = 'linear-gradient(135deg,' + g[0] + ',' + g[1] + ')';
 }
 
 function changeCount(d) {
@@ -1843,6 +1851,7 @@ function openCreate() {
   drawHistory = [];
   document.querySelectorAll('.color-dot').forEach((d, i) => d.classList.toggle('selected', i === 0));
   setTool('draw');
+  updateCanvasBg();
   showScreen('create-screen');
 }
 
@@ -2829,7 +2838,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v6.9 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v7.0 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
