@@ -169,7 +169,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.19 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.20 接続中...</div>
 <!-- ホーム画面追加ガイド -->
 <div id="install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9997;background:linear-gradient(135deg,#FFE5F1,#E8E2FF);padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 14px);box-shadow:0 -4px 20px rgba(177,156,217,0.25);">
   <div style="max-width:390px;margin:0 auto;display:flex;gap:10px;align-items:center;">
@@ -2538,9 +2538,13 @@ function addNotification(type, title, body, meta) {
   updateNotifBadge();
 }
 function unreadCount() {
-  // バッジに数えるのは「相手発の新着」のみ
-  const incomingTypes = ['ticket_received', 'ticket_used'];
-  return notifications.filter(n => !n.read && incomingTypes.indexOf(n.type) !== -1).length;
+  // 未開封の受け取りチケット数（isNew=true のもの）
+  const unopenedTickets = (typeof receivedTickets !== 'undefined' && Array.isArray(receivedTickets))
+    ? receivedTickets.filter(t => t && t.isNew).length
+    : 0;
+  // 未読の使用お知らせ
+  const unreadUsed = notifications.filter(n => !n.read && n.type === 'ticket_used').length;
+  return unopenedTickets + unreadUsed;
 }
 function markAllRead() {
   notifications.forEach(n => n.read = true);
@@ -2705,6 +2709,7 @@ function openReceivedDetail(i) {
   if (t.isNew) {
     t.isNew = false;
     saveReceivedTickets();
+    updateNotifBadge();
   }
   const remain = t.total - (t.used || 0);
   document.getElementById('detail-title').textContent = t.title;
@@ -3017,7 +3022,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v7.19 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v7.20 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
