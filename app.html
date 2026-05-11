@@ -2226,7 +2226,7 @@ function showInstallBannerIfNeeded() {
   const btn = document.getElementById('install-action-btn');
   if (!banner || !howto) return;
   if (isIos()) {
-    howto.innerHTML = '画面下の <strong>共有ボタン（□↑）</strong> →「ホーム画面に追加」';
+    howto.innerHTML = '画面下の <strong>「・・・」</strong> または <strong>共有ボタン（□↑）</strong> → 「ホーム画面に追加」';
     btn.style.display = 'none';
   } else if (_installPromptEvent) {
     howto.innerHTML = '「追加」を押すとインストールできます';
