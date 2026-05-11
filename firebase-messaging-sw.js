@@ -15,14 +15,20 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 // バックグラウンド受信時の通知表示
-messaging.onBackgroundMessage((payload) => {
+messaging.onBackgroundMessage(async (payload) => {
   const title = (payload.notification && payload.notification.title) || '🎟 新着チケット';
   const body = (payload.notification && payload.notification.body) || 'チケットが届きました';
-  self.registration.showNotification(title, {
+  // アイコンバッジ数を更新（既存通知数+1）
+  try {
+    if ('setAppBadge' in self.navigator) {
+      const existing = await self.registration.getNotifications();
+      await self.navigator.setAppBadge(existing.length + 1);
+    }
+  } catch(e) {}
+  await self.registration.showNotification(title, {
     body: body,
     icon: '/ticket-app/icon-192.png',
     badge: '/ticket-app/icon-192.png',
-    tag: 'ticket-received',
     data: payload.data || {}
   });
 });
