@@ -14,23 +14,14 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// バックグラウンド受信時の通知表示
+// バックグラウンド受信時はバッジのみ更新（通知表示はFCMが自動でやる）
 messaging.onBackgroundMessage(async (payload) => {
-  const title = (payload.notification && payload.notification.title) || '🎟 新着チケット';
-  const body = (payload.notification && payload.notification.body) || 'チケットが届きました';
-  // アイコンバッジ数を更新（既存通知数+1）
   try {
     if ('setAppBadge' in self.navigator) {
       const existing = await self.registration.getNotifications();
       await self.navigator.setAppBadge(existing.length + 1);
     }
   } catch(e) {}
-  await self.registration.showNotification(title, {
-    body: body,
-    icon: '/ticket-app/icon-192.png',
-    badge: '/ticket-app/icon-192.png',
-    data: payload.data || {}
-  });
 });
 
 // 通知タップでアプリを開く
