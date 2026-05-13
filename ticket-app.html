@@ -169,7 +169,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.32 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.33 接続中...</div>
 <!-- ホーム画面追加ガイド -->
 <div id="install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9997;background:linear-gradient(135deg,#FFE5F1,#E8E2FF);padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 14px);box-shadow:0 -4px 20px rgba(177,156,217,0.25);">
   <div style="max-width:390px;margin:0 auto;display:flex;gap:10px;align-items:center;">
@@ -604,7 +604,7 @@
   <!-- チケット受信確認 -->
   <div id="accept-wrap" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:9990;align-items:center;justify-content:center;padding:20px;">
     <div style="background:#fff;border-radius:22px;padding:22px 20px;max-width:340px;width:100%;text-align:center;">
-      <div style="font-size:40px;margin-bottom:8px;">🎁</div>
+      <img src="stamp-present.png?v=7.33" alt="" style="width:96px;height:96px;object-fit:contain;margin:0 auto 6px;display:block;">
       <h2 style="font-size:17px;font-weight:700;color:#5b4fb8;margin-bottom:6px;">チケットが届いています</h2>
       <p id="accept-from" style="font-size:12px;color:#888;margin-bottom:12px;"></p>
       <div id="accept-preview" style="background:linear-gradient(135deg,#FFE5F1,#E8E2FF);border-radius:14px;padding:14px;margin-bottom:18px;">
@@ -3084,7 +3084,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v7.32 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v7.33 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
