@@ -169,7 +169,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.29 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.30 接続中...</div>
 <!-- ホーム画面追加ガイド -->
 <div id="install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9997;background:linear-gradient(135deg,#FFE5F1,#E8E2FF);padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 14px);box-shadow:0 -4px 20px rgba(177,156,217,0.25);">
   <div style="max-width:390px;margin:0 auto;display:flex;gap:10px;align-items:center;">
@@ -195,6 +195,12 @@
   <div style="font-size:22px;font-weight:800;color:#7F77DD;letter-spacing:1px;text-shadow:0 2px 8px rgba(255,255,255,0.8);margin-top:-30px;">完了め★</div>
 </div>
 <style>@keyframes doneFadeIn{from{opacity:0;transform:scale(0.85)}to{opacity:1;transform:scale(1)}}</style>
+
+<!-- チケット受け取りオーバーレイ -->
+<div id="received-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10004;background:rgba(255,229,241,0.92);backdrop-filter:blur(4px);align-items:center;justify-content:center;flex-direction:column;gap:0;padding-bottom:25vh;animation:doneFadeIn 0.3s ease-out;cursor:pointer;" onclick="dismissReceivedOverlay()">
+  <img src="hituze-received.png?v=7.30" alt="" style="width:260px;height:260px;object-fit:contain;filter:drop-shadow(0 6px 16px rgba(127,119,221,0.25));">
+  <div id="received-overlay-text" style="font-size:20px;font-weight:800;color:#7F77DD;letter-spacing:1px;text-shadow:0 2px 8px rgba(255,255,255,0.8);margin-top:-30px;text-align:center;padding:0 20px;"></div>
+</div>
 
 <!-- 通知ON促進ポップアップ -->
 <div id="notif-prompt" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10001;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;padding:24px;">
@@ -2542,6 +2548,23 @@ function loadNotifications() {
 function saveNotifications() {
   try { localStorage.setItem('notifications', JSON.stringify(notifications.slice(0, NOTIF_MAX))); } catch(e) {}
 }
+function showReceivedOverlay(senderName) {
+  const ov = document.getElementById('received-overlay');
+  const txt = document.getElementById('received-overlay-text');
+  if (!ov || !txt) return;
+  const name = (senderName || '友達').replace(/さん$/, '');
+  txt.textContent = name + 'ちゃんからチケットがとどいため★';
+  ov.style.display = 'flex';
+  // 2.5秒後に自動で閉じる（タップでも閉じる）
+  if (window._receivedOverlayTimer) clearTimeout(window._receivedOverlayTimer);
+  window._receivedOverlayTimer = setTimeout(dismissReceivedOverlay, 2500);
+}
+function dismissReceivedOverlay() {
+  const ov = document.getElementById('received-overlay');
+  if (ov) ov.style.display = 'none';
+  if (window._receivedOverlayTimer) { clearTimeout(window._receivedOverlayTimer); window._receivedOverlayTimer = null; }
+}
+
 function recipientNameOf(peerId) {
   if (!peerId) return '';
   const f = friends.find(x => x.peerId === peerId);
@@ -3057,7 +3080,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v7.29 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v7.30 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
@@ -3191,7 +3214,7 @@ function acceptTicketDirect(t, senderName, senderId) {
   saveReceivedTickets();
   renderReceivedTickets();
   addNotification('ticket_received', '新しいチケット', (senderName || '友達') + 'から「' + t.title + '」を受け取りました', { from: senderName, ticketTitle: t.title, ticketDesc: t.desc || '', ticketColor: t.color || 0 });
-  showP2PBanner('🎟 ' + (senderName || '友達') + 'から「' + t.title + '」を受け取りました！');
+  showReceivedOverlay(senderName);
   updateNotifBadge();
 }
 
@@ -3227,7 +3250,7 @@ function acceptIncoming() {
     saveReceivedTickets();
     renderReceivedTickets();
     addNotification('ticket_received', '新しいチケット', cur.senderName + 'から「' + t.title + '」を受け取りました', { from: cur.senderName, ticketTitle: t.title, ticketDesc: t.desc || '', ticketColor: t.color || 0 });
-    showP2PBanner('🎟 ' + cur.senderName + 'から「' + t.title + '」を受け取りました！');
+    showReceivedOverlay(cur.senderName);
     // 送り主が友達未登録なら登録を提案
     if (cur.senderId && !friends.some(f => f.peerId === cur.senderId)) {
       setTimeout(() => {
