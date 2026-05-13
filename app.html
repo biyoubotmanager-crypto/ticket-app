@@ -169,7 +169,7 @@
 </head>
 <body>
 <!-- 接続状態バー（最上部・常時表示） -->
-<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.25 接続中...</div>
+<div id="conn-bar" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#FFB6C1,#B19CD9);color:white;padding:calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;font-size:11px;font-weight:700;text-align:center;letter-spacing:0.5px;">✨ v7.26 接続中...</div>
 <!-- ホーム画面追加ガイド -->
 <div id="install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9997;background:linear-gradient(135deg,#FFE5F1,#E8E2FF);padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 14px);box-shadow:0 -4px 20px rgba(177,156,217,0.25);">
   <div style="max-width:390px;margin:0 auto;display:flex;gap:10px;align-items:center;">
@@ -184,13 +184,13 @@
 </div>
 
 <!-- チケット送信中オーバーレイ -->
-<div id="sending-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10002;background:rgba(255,229,241,0.85);backdrop-filter:blur(4px);align-items:center;justify-content:center;flex-direction:column;gap:14px;">
+<div id="sending-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10002;background:rgba(255,229,241,0.85);backdrop-filter:blur(4px);align-items:center;justify-content:center;flex-direction:column;gap:14px;padding-bottom:25vh;">
   <img src="hituze-running.png?v=7.24" alt="" style="width:240px;height:240px;object-fit:contain;filter:drop-shadow(0 6px 16px rgba(127,119,221,0.25));">
   <div style="font-size:18px;font-weight:800;color:#7F77DD;letter-spacing:1px;text-shadow:0 2px 8px rgba(255,255,255,0.8);">とどけているめ★</div>
 </div>
 
 <!-- チケット送信完了オーバーレイ -->
-<div id="done-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10003;background:rgba(255,229,241,0.92);backdrop-filter:blur(4px);align-items:center;justify-content:center;flex-direction:column;gap:14px;animation:doneFadeIn 0.3s ease-out;">
+<div id="done-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10003;background:rgba(255,229,241,0.92);backdrop-filter:blur(4px);align-items:center;justify-content:center;flex-direction:column;gap:14px;padding-bottom:25vh;animation:doneFadeIn 0.3s ease-out;">
   <img src="hituze-done.png?v=7.25" alt="" style="width:260px;height:260px;object-fit:contain;filter:drop-shadow(0 6px 16px rgba(127,119,221,0.25));">
   <div style="font-size:22px;font-weight:800;color:#7F77DD;letter-spacing:1px;text-shadow:0 2px 8px rgba(255,255,255,0.8);">完了め★</div>
 </div>
@@ -3046,7 +3046,7 @@ const PEER_CONFIG = {
 function setConnStatus(text, color) {
   const bar = document.getElementById('conn-bar');
   if (bar) {
-    bar.textContent = '✨ v7.25 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
+    bar.textContent = '✨ v7.26 ' + text + (myPeerId ? ' / ID:' + myPeerId : '');
     if (color) {
       bar.style.background = color;
     } else {
